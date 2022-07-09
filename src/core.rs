@@ -9,6 +9,7 @@ pub mod spec {
 
     use eval::{to_value, Expr, Value};
     use serde::{Deserialize, Serialize};
+    use regex::Regex;
 
     #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
     pub struct Case {
@@ -92,19 +93,47 @@ pub mod spec {
             Expr::new(expression)
                 .value("ctx", &self.context)
                 .function("int", |value| {
-                    let v = value.get(0).unwrap().as_str().unwrap().to_string();
-                    let num = v.parse::<i32>().unwrap();
+                    let v = value.get(0).unwrap();
+                    let num: i64 = match v {
+                        Value::Number(x) => x.as_i64().unwrap(),
+                        Value::Bool(x) => if *x {1} else {0},
+                        Value::String(x) => {
+                            match x.parse::<i64>() {
+                                Ok(x) => x,
+                                _ => std::i64::MIN,
+                            }
+                        },
+                        _ => std::i64::MIN,
+                    };
                     Ok(to_value(num))
                 })
                 .function("float", |value| {
-                    let v = value.get(0).unwrap().as_str().unwrap().to_string();
-                    let num = v.parse::<f32>().unwrap();
+                    let v = value.get(0).unwrap();
+                    let num: f64 = match v {
+                        Value::Number(x) => x.as_f64().unwrap(),
+                        Value::Bool(x) => if *x {1.0} else {0.0},
+                        Value::String(x) => {
+                            match x.parse::<f64>() {
+                                Ok(x) => x,
+                                _ => std::f64::NAN,
+                            }
+                        },
+                        _ => std::f64::NAN,
+                    };
                     Ok(to_value(num))
                 })
                 .function("bool", |value| {
-                    let v = value.get(0).unwrap().as_str().unwrap().to_string();
-                    let as_bool = v.parse::<bool>().unwrap();
-                    Ok(to_value(as_bool))
+                    let v = value.get(0).unwrap();
+                    let result: bool = match v {
+                        Value::Number(x) => x.as_f64().unwrap() != 0.0,
+                        Value::Bool(x) => *x,
+                        Value::String(x) => !x.is_empty(),
+                        Value::Array(x) => !x.is_empty(),
+                        Value::Object(x) => !x.is_empty(),
+                        _ => false,
+                    };
+
+                    Ok(to_value(result))
                 })
                 .function("str", |value| {
                     let v = value.get(0).unwrap();
@@ -149,6 +178,24 @@ pub mod spec {
                         _ => current_time.hour(),
                     };
                     Ok(to_value(result))
+                })
+                .function("is_match", |value| {
+                    let v = value.get(0).unwrap();
+                    let pattern = value.get(1).unwrap().to_string();
+
+                    let value: String = match v {
+                        Value::Number(x) => x.as_f64().unwrap().to_string(),
+                        Value::Bool(x) => x.to_string(),
+                        Value::String(x) => x.to_string(),
+                        Value::Array(x) => serde_json::to_string(x).unwrap(),
+                        Value::Object(x) => serde_json::to_string(x).unwrap(),
+                        _ => String::from("null"),
+                    };
+
+                    let prog = Regex::new(&pattern).unwrap();
+                    let is_match = prog.is_match(&value);
+
+                    Ok(to_value(is_match))
                 })
         }
 
