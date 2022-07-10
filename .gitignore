@@ -1,4 +1,6 @@
 /target
+/**/.vscode
+
 /ui/node_modules
 
 /ui/.expo/
