@@ -1,64 +1,16 @@
 /target
 /ui/node_modules
 
-# OSX
-#
-.DS_Store
+/ui/.expo/
+/ui/dist/
+/ui/npm-debug.*
+/ui/*.jks
+/ui/*.p8
+/ui/*.p12
+/ui/*.key
+/ui/*.mobileprovision
+/ui/*.orig.*
+/ui/web-build/
 
-# Xcode
-#
-/ui/build/
-*/ui/.pbxuser
-!/ui/default.pbxuser
-/ui/*.mode1v3
-!/ui/default.mode1v3
-/ui/*.mode2v3
-!/ui/default.mode2v3
-/ui/*.perspectivev3
-!/ui/default.perspectivev3
-/ui/xcuserdata
-/ui/*.xccheckout
-/ui/*.moved-aside
-/ui/DerivedData
-/ui/*.hmap
-/ui/*.ipa
-/ui/*.xcuserstate
-
-# Android/IntelliJ
-#
-/ui/build/
-/ui/.idea
-/ui/.gradle
-/ui/local.properties
-/ui/*.iml
-/ui/*.hprof
-
-# node.js
-#
-/ui/node_modules/
-/ui/npm-debug.log
-/ui/yarn-error.log
-
-# BUCK
-/ui/buck-out/
-/ui/\.buckd/
-/ui/*.keystore
-/ui/!debug.keystore
-
-# fastlane
-#
-# It is recommended to not store the screenshots in the git repo. Instead, use fastlane to re-generate the
-# screenshots whenever they are needed.
-# For more information about the recommended setup visit:
-# https://docs.fastlane.tools/best-practices/source-control/
-
-/ui/*/fastlane/report.xml
-/ui/*/fastlane/Preview.html
-/ui/*/fastlane/screenshots
-
-# Bundle artifact
-/ui/*.jsbundle
-
-# Ruby / CocoaPods
-/ios/Pods/
-/vendor/bundle/
+# macOS
+/**/.DS_Store
