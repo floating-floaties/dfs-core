@@ -10,7 +10,7 @@ mod eval {
     use eval::to_value;
 
     #[test]
-    fn globals_variables() {
+    fn global_variables() {
         let user_spec = Spec::default();
         assert_eq!(user_spec.eval("MIN_INT"), to_value(std::i64::MIN));
         assert_eq!(user_spec.eval("MAX_INT"), to_value(std::i64::MAX));
