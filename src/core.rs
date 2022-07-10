@@ -113,7 +113,7 @@ pub mod spec {
                                 0
                             }
                         }
-                        Value::String(x) => atoi(x.to_string()),
+                        Value::String(x) => _atoi(x.to_string()),
                         _ => 0,
                     };
                     Ok(to_value(num))
@@ -301,7 +301,7 @@ pub mod spec {
         }
     }
 
-    pub fn atoi(s: String) -> i64 {
+    fn _atoi(s: String) -> i64 {
         let mut item = s
             .trim()
             .split(char::is_whitespace)
