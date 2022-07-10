@@ -3,11 +3,13 @@ mod core;
 
 #[cfg(test)]
 mod eval {
-    use chrono::{Datelike, Timelike};
     use std::collections::HashMap;
 
-    use crate::core::spec::*;
+    use chrono::offset::Local as Date;
+    use chrono::{Datelike, Timelike};
     use eval::to_value;
+
+    use crate::core::spec::Spec;
 
     #[test]
     fn global_variables() {
@@ -18,7 +20,10 @@ mod eval {
         assert_eq!(user_spec.eval("MIN_FLOAT"), to_value(std::f64::MIN));
         assert_eq!(user_spec.eval("NAN"), to_value(std::f64::NAN));
         assert_eq!(user_spec.eval("INFINITY"), to_value(std::f64::INFINITY));
-        assert_eq!(user_spec.eval("NEG_INFINITY"), to_value(std::f64::NEG_INFINITY));
+        assert_eq!(
+            user_spec.eval("NEG_INFINITY"),
+            to_value(std::f64::NEG_INFINITY)
+        );
     }
 
     #[test]
@@ -124,7 +129,7 @@ mod eval {
     #[test]
     fn day() {
         let user_spec = Spec::default();
-        let date = chrono::offset::Local::now().date();
+        let date = Date::now().date();
         let day = date.day();
 
         assert_eq!(user_spec.eval("day()"), day);
@@ -134,18 +139,17 @@ mod eval {
     #[test]
     fn month() {
         let user_spec = Spec::default();
-        let date = chrono::offset::Local::now().date();
+        let date = Date::now().date();
         let month = date.month();
 
         assert_eq!(user_spec.eval("month()"), month);
         assert_eq!(user_spec.eval("month(with, args)"), month);
-
     }
 
     #[test]
     fn year() {
         let user_spec = Spec::default();
-        let date = chrono::offset::Local::now().date();
+        let date = Date::now().date();
         let year = date.year();
         assert_eq!(user_spec.eval("year()"), year);
         assert_eq!(user_spec.eval("year(with, args)"), year);
@@ -154,7 +158,7 @@ mod eval {
     #[test]
     fn weekday() {
         let user_spec = Spec::default();
-        let weekday_num = chrono::offset::Local::now().weekday().number_from_monday();
+        let weekday_num = Date::now().weekday().number_from_monday();
         assert_eq!(user_spec.eval("weekday()"), weekday_num);
         assert_eq!(user_spec.eval("is_weekday()"), weekday_num < 6);
 
@@ -165,43 +169,28 @@ mod eval {
     #[test]
     fn time() {
         let user_spec = Spec::default();
-        assert_eq!(
-            user_spec.eval("time('h')"),
-            chrono::offset::Local::now().time().hour()
-        );
-        assert_eq!(
-            user_spec.eval("time('m')"),
-            chrono::offset::Local::now().time().minute()
-        );
-        assert_eq!(
-            user_spec.eval("time('s')"),
-            chrono::offset::Local::now().time().second()
-        );
+        assert_eq!(user_spec.eval("time('h')"), Date::now().time().hour());
+        assert_eq!(user_spec.eval("time('m')"), Date::now().time().minute());
+        assert_eq!(user_spec.eval("time('s')"), Date::now().time().second());
 
-        assert_eq!(
-            user_spec.eval("time('hour')"),
-            chrono::offset::Local::now().time().hour()
-        );
+        assert_eq!(user_spec.eval("time('hour')"), Date::now().time().hour());
         assert_eq!(
             user_spec.eval("time('minute')"),
-            chrono::offset::Local::now().time().minute()
+            Date::now().time().minute()
         );
         assert_eq!(
             user_spec.eval("time('second')"),
-            chrono::offset::Local::now().time().second()
+            Date::now().time().second()
         );
 
-        assert_eq!(
-            user_spec.eval("time('hours')"),
-            chrono::offset::Local::now().time().hour()
-        );
+        assert_eq!(user_spec.eval("time('hours')"), Date::now().time().hour());
         assert_eq!(
             user_spec.eval("time('minutes')"),
-            chrono::offset::Local::now().time().minute()
+            Date::now().time().minute()
         );
         assert_eq!(
             user_spec.eval("time('seconds')"),
-            chrono::offset::Local::now().time().second()
+            Date::now().time().second()
         );
     }
 }
