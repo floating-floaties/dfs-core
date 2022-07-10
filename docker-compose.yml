@@ -1,0 +1,14 @@
+version: "3.9"
+services:
+  api:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - SOME_ENV=some-value
+  ui:
+    build: ./ui
+    ports:
+      - "3000:3000"
+    environment:
+      - SOME_ENV=some-value
