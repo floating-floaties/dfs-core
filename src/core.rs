@@ -1,15 +1,16 @@
 #![allow(dead_code)]
 
 pub mod spec {
-    use chrono::{Datelike, Timelike};
     use std::{
         collections::{BTreeMap, HashMap},
+        num::IntErrorKind,
         vec,
     };
 
+    use chrono::{Datelike, Timelike};
     use eval::{to_value, Expr, Value};
-    use serde::{Deserialize, Serialize};
     use regex::Regex;
+    use serde::{Deserialize, Serialize};
 
     #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
     pub struct Case {
@@ -93,36 +94,57 @@ pub mod spec {
             Expr::new(expression)
                 .value("ctx", &self.context)
                 .function("int", |value| {
+                    if value.is_empty() {
+                        return Ok(to_value(0));
+                    }
                     let v = value.get(0).unwrap();
                     let num: i64 = match v {
-                        Value::Number(x) => x.as_i64().unwrap(),
-                        Value::Bool(x) => if *x {1} else {0},
-                        Value::String(x) => {
-                            match x.parse::<i64>() {
-                                Ok(x) => x,
-                                _ => std::i64::MIN,
+                        Value::Number(x) => {
+                            if x.is_f64() {
+                                x.as_f64().unwrap() as i64
+                            } else {
+                                x.as_i64().unwrap()
                             }
-                        },
-                        _ => std::i64::MIN,
+                        }
+                        Value::Bool(x) => {
+                            if *x {
+                                1
+                            } else {
+                                0
+                            }
+                        }
+                        Value::String(x) => atoi(x.to_string()),
+                        _ => 0,
                     };
                     Ok(to_value(num))
                 })
                 .function("float", |value| {
+                    if value.is_empty() {
+                        return Ok(to_value(std::f64::NAN));
+                    }
                     let v = value.get(0).unwrap();
                     let num: f64 = match v {
                         Value::Number(x) => x.as_f64().unwrap(),
-                        Value::Bool(x) => if *x {1.0} else {0.0},
-                        Value::String(x) => {
-                            match x.parse::<f64>() {
-                                Ok(x) => x,
-                                _ => std::f64::NAN,
+                        Value::Bool(x) => {
+                            if *x {
+                                1.0
+                            } else {
+                                0.0
                             }
+                        }
+                        Value::String(x) => match x.parse::<f64>() {
+                            Ok(x) => x,
+                            _ => std::f64::NAN,
                         },
                         _ => std::f64::NAN,
                     };
+
                     Ok(to_value(num))
                 })
                 .function("bool", |value| {
+                    if value.is_empty() {
+                        return Ok(to_value(false));
+                    }
                     let v = value.get(0).unwrap();
                     let result: bool = match v {
                         Value::Number(x) => x.as_f64().unwrap() != 0.0,
@@ -136,9 +158,18 @@ pub mod spec {
                     Ok(to_value(result))
                 })
                 .function("str", |value| {
+                    if value.is_empty() {
+                        return Ok(to_value("".to_string()));
+                    }
                     let v = value.get(0).unwrap();
                     let result: String = match v {
-                        Value::Number(x) => x.as_f64().unwrap().to_string(),
+                        Value::Number(x) => {
+                            if x.is_f64() {
+                                x.as_f64().unwrap().to_string()
+                            } else {
+                                x.as_i64().unwrap().to_string()
+                            }
+                        }
                         Value::Bool(x) => x.to_string(),
                         Value::String(x) => x.to_string(),
                         Value::Array(x) => serde_json::to_string(x).unwrap(),
@@ -169,8 +200,26 @@ pub mod spec {
                     Ok(to_value(weekday < 6))
                 })
                 .function("time", |extract| {
-                    let v = extract.get(0).unwrap().as_str().unwrap().to_lowercase();
                     let current_time = chrono::offset::Local::now().time();
+                    if extract.is_empty() {
+                        return Ok(to_value(current_time.hour()));
+                    }
+
+                    let v: String = match extract.get(0).unwrap() {
+                        Value::Number(x) => {
+                            if x.is_f64() {
+                                x.as_f64().unwrap().to_string()
+                            } else {
+                                x.as_i64().unwrap().to_string()
+                            }
+                        }
+                        Value::Bool(x) => x.to_string(),
+                        Value::String(x) => x.to_string(),
+                        Value::Array(x) => serde_json::to_string(x).unwrap(),
+                        Value::Object(x) => serde_json::to_string(x).unwrap(),
+                        _ => String::from("null"),
+                    };
+
                     let result = match v.as_str() {
                         "h" | "hour" | "hours" => current_time.hour(),
                         "m" | "minute" | "minutes" => current_time.minute(),
@@ -180,6 +229,9 @@ pub mod spec {
                     Ok(to_value(result))
                 })
                 .function("is_match", |value| {
+                    if value.len() < 2 {
+                        return Ok(to_value(false));
+                    }
                     let v = value.get(0).unwrap();
                     let pattern = value.get(1).unwrap().to_string();
 
@@ -197,6 +249,16 @@ pub mod spec {
 
                     Ok(to_value(is_match))
                 })
+                .value("MIN_INT", std::i64::MIN)
+                .value("MAX_INT", std::i64::MAX)
+                .value("MAX_FLOAT", std::f64::MAX)
+                .value("MIN_FLOAT", std::f64::MIN)
+                .value("NAN", std::f64::NAN)
+                .value("INFINITY", std::f64::INFINITY)
+                .value("NEG_INFINITY", std::f64::NEG_INFINITY)
+
+            // TODO: is_nan(n), is_min_int(n), is_int_max(n), includes(arr)
+            // TODO: min(arr), max(arr), abs(n), pow(n, p), sum(arr), reverse(arr), sort(arr), unique(arr)
         }
 
         pub fn eval<S: AsRef<str>>(&self, expression: S) -> Value {
@@ -213,7 +275,7 @@ pub mod spec {
 
             return result.unwrap();
         }
-        
+
         pub fn from_yaml(content: &String) -> Self {
             serde_yaml::from_str(&content).unwrap()
         }
@@ -236,6 +298,50 @@ pub mod spec {
 
         pub fn write_to_json(&self, path: String) {
             std::fs::write(path, self.to_json()).expect("failed to write file");
+        }
+    }
+
+    pub fn atoi(s: String) -> i64 {
+        let mut item = s
+            .trim()
+            .split(char::is_whitespace)
+            .next()
+            .unwrap()
+            .split(char::is_alphabetic)
+            .next()
+            .unwrap();
+
+        let mut end_idx = 0;
+        for (pos, c) in item.chars().enumerate() {
+            if pos == 0 {
+                continue;
+            }
+
+            if !c.is_alphanumeric() {
+                end_idx = pos;
+                break;
+            }
+        }
+
+        if end_idx > 0 {
+            item = &item[0..end_idx];
+        }
+
+        let result = item.parse::<i64>();
+        match result {
+            Ok(v) => return v,
+            Err(error) => match error.kind() {
+                IntErrorKind::NegOverflow => return std::i64::MIN,
+                IntErrorKind::PosOverflow => return std::i64::MAX,
+                IntErrorKind::InvalidDigit => {
+                    let result = item.parse::<f64>();
+                    match result {
+                        Ok(v) => return v.round() as i64,
+                        _ => return 0,
+                    };
+                }
+                _ => return 0,
+            },
         }
     }
 }
