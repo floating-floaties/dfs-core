@@ -2,4 +2,18 @@
 /.github
 /.git
 /.gitignore
-/ui
+
+/ui/node_modules/
+/ui/.expo/
+/ui/dist/
+/ui/npm-debug.*
+/ui/*.jks
+/ui/*.p8
+/ui/*.p12
+/ui/*.key
+/ui/*.mobileprovision
+/ui/*.orig.*
+/ui/web-build/
+
+# macOS
+.DS_Store

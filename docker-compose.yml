@@ -3,12 +3,7 @@ services:
   api:
     build: .
     ports:
-      - "8080:8080"
+      - "80:80"
     environment:
-      - SOME_ENV=some-value
-  ui:
-    build: ./ui
-    ports:
-      - "3000:3000"
-    environment:
-      - SOME_ENV=some-value
+      - HOST=0.0.0.0
+      - PORT=80
