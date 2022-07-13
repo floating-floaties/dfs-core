@@ -32,13 +32,15 @@ COPY ./tests ./tests
 COPY ./examples ./examples
 
 RUN rm ./target/release/deps/dfs*
-RUN cargo build --target="dfs" --release
+RUN cargo build --release
 
 # 
 FROM rust:$RUST_VERSION
 
-COPY --from=build_api /dfs/target/release/deps/dfs* ./
+COPY --from=build_api /dfs/target/release/dfs ./dfs
 COPY --from=build_ui /uiapp/web-build/. ./static/.
+
+RUN ls -lah
 
 RUN sed -i -e 's/\/static\/js/\/static\/static\/js/g' ./static/index.html 
 RUN sed -i -e 's/\.manifest.json/\\static\\\.manifest.json/g' ./static/index.html 
