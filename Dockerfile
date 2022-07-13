@@ -19,7 +19,7 @@ RUN expo build:web
 FROM rust:$RUST_VERSION as build_api
 
 RUN USER=root cargo new --bin /dfs
-WORKDIR /apiapp
+WORKDIR /dfs
 
 COPY Cargo.toml .
 COPY Cargo.lock .
@@ -37,7 +37,7 @@ RUN cargo build --release
 # 
 FROM rust:$RUST_VERSION
 
-COPY --from=build_api /apiapp/target/release/deps/dfs .
+COPY --from=build_api /dfs/target/release/deps/dfs .
 COPY --from=build_ui /uiapp/web-build/. ./static/.
 
 RUN sed -i -e 's/\/static\/js/\/static\/static\/js/g' ./static/index.html 
