@@ -3,8 +3,8 @@ use std::path::PathBuf;
 use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
 use actix_files::NamedFile;
 use actix_web::{HttpRequest, Result};
-// use actix_cors::Cors;
-// use actix_web::http::header;
+use actix_cors::Cors;
+use actix_web::http::header;
 
 mod core;
 use crate::core::spec::Spec;
@@ -83,19 +83,20 @@ async fn main() -> std::io::Result<()> {
 
     println!("Running on: http://{host}:{port}");
     HttpServer::new(|| {
-        // let cors = Cors::permissive()
-            // .allowed_origin("*")
-            // .allowed_origin("http://localhost:19006/")
-            // .allowed_methods(vec!["GET", "POST"])
-            // .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT])
-            // .allowed_header(header::CONTENT_TYPE)
-            // .max_age(3600);
+        let cors = Cors::default()
+            .allowed_origin("https://floaties.dudi.win")
+            .allowed_methods(vec!["GET", "POST"])
+            .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT])
+            .allowed_header(header::CONTENT_TYPE)
+            .allowed_header(header::ACCESS_CONTROL_ALLOW_ORIGIN)
+            .max_age(3600);
         
         App::new()
-            // .wrap(cors)
+            .wrap(cors)
             .service(hello)
             .service(echo)
             .service(greet)
+            .service(test_condition)
             .route("/{filename:.*}", web::get().to(static_route))
     })
     .bind((host, port))?
