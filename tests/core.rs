@@ -5,7 +5,7 @@ mod core;
 mod eval {
     use std::collections::HashMap;
 
-    use chrono::offset::Local as Date;
+    use chrono::offset::Utc as Date;
     use chrono::{Datelike, Timelike};
     use eval::to_value;
 
@@ -133,7 +133,7 @@ mod eval {
         let day = date.day();
 
         assert_eq!(user_spec.eval("day()"), day);
-        assert_eq!(user_spec.eval("day(with, args)"), day);
+        assert_eq!(user_spec.eval("day('_')"), day);
     }
 
     #[test]
@@ -143,7 +143,7 @@ mod eval {
         let month = date.month();
 
         assert_eq!(user_spec.eval("month()"), month);
-        assert_eq!(user_spec.eval("month(with, args)"), month);
+        assert_eq!(user_spec.eval("month('_')"), month);
     }
 
     #[test]
@@ -152,44 +152,44 @@ mod eval {
         let date = Date::now().date();
         let year = date.year();
         assert_eq!(user_spec.eval("year()"), year);
-        assert_eq!(user_spec.eval("year(with, args)"), year);
+        assert_eq!(user_spec.eval("year('_')"), year);
     }
 
     #[test]
     fn weekday() {
         let user_spec = Spec::default();
         let weekday_num = Date::now().weekday().number_from_monday();
+        assert_eq!(user_spec.eval("weekday('_')"), weekday_num);
+        assert_eq!(user_spec.eval("is_weekday('_')"), weekday_num < 6);
+
         assert_eq!(user_spec.eval("weekday()"), weekday_num);
         assert_eq!(user_spec.eval("is_weekday()"), weekday_num < 6);
-
-        assert_eq!(user_spec.eval("weekday(with, args)"), weekday_num);
-        assert_eq!(user_spec.eval("is_weekday(with, args)"), weekday_num < 6);
     }
 
     #[test]
     fn time() {
         let user_spec = Spec::default();
-        assert_eq!(user_spec.eval("time('h')"), Date::now().time().hour());
-        assert_eq!(user_spec.eval("time('m')"), Date::now().time().minute());
-        assert_eq!(user_spec.eval("time('s')"), Date::now().time().second());
+        assert_eq!(user_spec.eval("time('_', 'h')"), Date::now().time().hour());
+        assert_eq!(user_spec.eval("time('_', 'm')"), Date::now().time().minute());
+        assert_eq!(user_spec.eval("time('_', 's')"), Date::now().time().second());
 
-        assert_eq!(user_spec.eval("time('hour')"), Date::now().time().hour());
+        assert_eq!(user_spec.eval("time('_', 'hour')"), Date::now().time().hour());
         assert_eq!(
-            user_spec.eval("time('minute')"),
+            user_spec.eval("time('_', 'minute')"),
             Date::now().time().minute()
         );
         assert_eq!(
-            user_spec.eval("time('second')"),
+            user_spec.eval("time('_', 'second')"),
             Date::now().time().second()
         );
 
-        assert_eq!(user_spec.eval("time('hours')"), Date::now().time().hour());
+        assert_eq!(user_spec.eval("time('_', 'hours')"), Date::now().time().hour());
         assert_eq!(
-            user_spec.eval("time('minutes')"),
+            user_spec.eval("time('_', 'minutes')"),
             Date::now().time().minute()
         );
         assert_eq!(
-            user_spec.eval("time('seconds')"),
+            user_spec.eval("time('_', 'seconds')"),
             Date::now().time().second()
         );
     }
