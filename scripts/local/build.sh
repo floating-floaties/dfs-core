@@ -3,7 +3,7 @@
 set -e -o xtrace
 
 cargo install cargo-watch
-npm install --location=global expo-cli sharp-cli yarn
+sudo npm install --location=global expo-cli sharp-cli yarn
 
 cargo build
 

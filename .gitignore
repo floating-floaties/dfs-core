@@ -4,16 +4,6 @@
 /node_modules
 /ui/node_modules
 
-/ui/.expo/
-/ui/dist/
-/ui/npm-debug.*
-/ui/*.jks
-/ui/*.p8
-/ui/*.p12
-/ui/*.key
-/ui/*.mobileprovision
-/ui/*.orig.*
-/ui/web-build/
-
+/ui
 # macOS
 /**/.DS_Store
