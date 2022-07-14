@@ -102,7 +102,7 @@ pub mod spec {
             .value("ctx", &self.context)
             .value("sys", &self.system);
 
-            return utils::expr_wrapper(exp);
+            return utils::expr_wrapper(exp, utils::EvalConfig::default());
         }
 
         pub fn eval<S: AsRef<str>>(&self, expression: S) -> eval::Value {
