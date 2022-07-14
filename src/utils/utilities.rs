@@ -3,18 +3,22 @@ pub mod utils {
     use eval::{to_value, Expr, Value};
     use regex::Regex;
 
-    const US_ALASKA: &str = "US/Alaska";
-    const US_ALEUTIAN: &str = "US/Aleutian";
-    const US_ARIZONA: &str = "US/Arizona";
-    const US_CENTRAL: &str = "US/Central";
-    const US_EASTINDIANA: &str = "US/EastIndiana";
-    const US_EASTERN: &str = "US/Eastern";
-    const US_HAWAII: &str = "US/Hawaii";
-    const US_INDIANA_STARKE: &str = "US/IndianaStarke";
-    const US_MICHIGAN: &str = "US/Michigan";
-    const US_MOUNTAIN: &str = "US/Mountain";
-    const US_PACIFIC: &str = "US/Pacific";
-    const US_SAMOA: &str = "US/Samoa";
+    pub mod consts {
+        pub mod tz {
+            pub const US_ALASKA: &str = "US/Alaska";
+            pub const US_ALEUTIAN: &str = "US/Aleutian";
+            pub const US_ARIZONA: &str = "US/Arizona";
+            pub const US_CENTRAL: &str = "US/Central";
+            pub const US_EASTINDIANA: &str = "US/EastIndiana";
+            pub const US_EASTERN: &str = "US/Eastern";
+            pub const US_HAWAII: &str = "US/Hawaii";
+            pub const US_INDIANA_STARKE: &str = "US/IndianaStarke";
+            pub const US_MICHIGAN: &str = "US/Michigan";
+            pub const US_MOUNTAIN: &str = "US/Mountain";
+            pub const US_PACIFIC: &str = "US/Pacific";
+            pub const US_SAMOA: &str = "US/Samoa";
+        }
+    }
 
     #[derive(Debug, Clone)]
     pub struct EvalConfig {
@@ -42,164 +46,121 @@ pub mod utils {
         }
     }
 
-    type TypeOfString = u8;
-    const INT64: TypeOfString = 0; 
-    const F64: TypeOfString = 1; 
+    #[derive(Debug, Clone, PartialEq)]
+    pub enum TypeOfString {
+        INT64,
+        F64,
+    }
 
     pub fn math_consts() -> Vec<(String, (String, TypeOfString))> {
-    return vec![
-        (
-            "MIN_INT".to_string(),
-            (std::i64::MIN.to_string(), INT64),
-        ),
-        (
-            "MAX_INT".to_string(),
-            (std::i64::MAX.to_string(), INT64),
-        ),
-        (
-            "MAX_FLOAT".to_string(),
-            (std::f64::MAX.to_string(), F64),
-        ),
-        (
-            "MIN_FLOAT".to_string(),
-            (std::f64::MIN.to_string(), F64),
-        ),
-        (
-            "NAN".to_string(),
-            (std::f64::NAN.to_string(), F64),
-        ),
-        (
-            "INFINITY".to_string(),
-            (std::f64::INFINITY.to_string(), F64),
-        ),
-        (
-            "NEG_INFINITY".to_string(),
+        return vec![
             (
-                std::f64::NEG_INFINITY.to_string(),
-                F64,
+                "MIN_INT".to_string(),
+                (std::i64::MIN.to_string(), TypeOfString::INT64),
             ),
-        ),
-        (
-            "E".to_string(),
-            (std::f64::consts::E.to_string(), F64),
-        ),
-        (
-            "FRAC_1_SQRT_2".to_string(),
             (
-                std::f64::consts::FRAC_1_SQRT_2.to_string(),
-                F64,
+                "MAX_INT".to_string(),
+                (std::i64::MAX.to_string(), TypeOfString::INT64),
             ),
-        ),
-        (
-            "FRAC_2_SQRT_PI".to_string(),
             (
-                std::f64::consts::FRAC_2_SQRT_PI.to_string(),
-                F64,
+                "MAX_FLOAT".to_string(),
+                (std::f64::MAX.to_string(), TypeOfString::F64),
             ),
-        ),
-        (
-            "FRAC_1_PI".to_string(),
             (
-                std::f64::consts::FRAC_1_PI.to_string(),
-                F64,
+                "MIN_FLOAT".to_string(),
+                (std::f64::MIN.to_string(), TypeOfString::F64),
             ),
-        ),
-        (
-            "FRAC_PI_2".to_string(),
             (
-                std::f64::consts::FRAC_PI_2.to_string(),
-                F64,
+                "NAN".to_string(),
+                (std::f64::NAN.to_string(), TypeOfString::F64),
             ),
-        ),
-        (
-            "FRAC_PI_3".to_string(),
             (
-                std::f64::consts::FRAC_PI_3.to_string(),
-                F64,
+                "INFINITY".to_string(),
+                (std::f64::INFINITY.to_string(), TypeOfString::F64),
             ),
-        ),
-        (
-            "FRAC_PI_4".to_string(),
             (
-                std::f64::consts::FRAC_PI_4.to_string(),
-                F64,
+                "NEG_INFINITY".to_string(),
+                (std::f64::NEG_INFINITY.to_string(), TypeOfString::F64),
             ),
-        ),
-        (
-            "FRAC_PI_6".to_string(),
             (
-                std::f64::consts::FRAC_PI_6.to_string(),
-                F64,
+                "E".to_string(),
+                (std::f64::consts::E.to_string(), TypeOfString::F64),
             ),
-        ),
-        (
-            "FRAC_PI_8".to_string(),
             (
-                std::f64::consts::FRAC_PI_8.to_string(),
-                F64,
+                "FRAC_1_SQRT_2".to_string(),
+                (
+                    std::f64::consts::FRAC_1_SQRT_2.to_string(),
+                    TypeOfString::F64,
+                ),
             ),
-        ),
-        (
-            "LN_2".to_string(),
             (
-                std::f64::consts::LN_2.to_string(),
-                F64,
+                "FRAC_2_SQRT_PI".to_string(),
+                (
+                    std::f64::consts::FRAC_2_SQRT_PI.to_string(),
+                    TypeOfString::F64,
+                ),
             ),
-        ),
-        (
-            "LN_10".to_string(),
             (
-                std::f64::consts::LN_10.to_string(),
-                F64,
+                "FRAC_1_PI".to_string(),
+                (std::f64::consts::FRAC_1_PI.to_string(), TypeOfString::F64),
             ),
-        ),
-        (
-            "LOG2_10".to_string(),
             (
-                std::f64::consts::LOG2_10.to_string(),
-                F64,
+                "FRAC_PI_2".to_string(),
+                (std::f64::consts::FRAC_PI_2.to_string(), TypeOfString::F64),
             ),
-        ),
-        (
-            "LOG2_E".to_string(),
             (
-                std::f64::consts::LOG2_E.to_string(),
-                F64,
+                "FRAC_PI_3".to_string(),
+                (std::f64::consts::FRAC_PI_3.to_string(), TypeOfString::F64),
             ),
-        ),
-        (
-            "LOG10_2".to_string(),
             (
-                std::f64::consts::LOG10_2.to_string(),
-                F64,
+                "FRAC_PI_4".to_string(),
+                (std::f64::consts::FRAC_PI_4.to_string(), TypeOfString::F64),
             ),
-        ),
-        (
-            "LOG10_E".to_string(),
             (
-                std::f64::consts::LOG10_E.to_string(),
-                F64,
+                "FRAC_PI_6".to_string(),
+                (std::f64::consts::FRAC_PI_6.to_string(), TypeOfString::F64),
             ),
-        ),
-        (
-            "PI".to_string(),
-            (std::f64::consts::PI.to_string(), F64),
-        ),
-        (
-            "SQRT_2".to_string(),
             (
-                std::f64::consts::SQRT_2.to_string(),
-                F64,
+                "FRAC_PI_8".to_string(),
+                (std::f64::consts::FRAC_PI_8.to_string(), TypeOfString::F64),
             ),
-        ),
-        (
-            "TAU".to_string(),
             (
-                std::f64::consts::TAU.to_string(),
-                F64,
+                "LN_2".to_string(),
+                (std::f64::consts::LN_2.to_string(), TypeOfString::F64),
             ),
-        ),
-    ];
+            (
+                "LN_10".to_string(),
+                (std::f64::consts::LN_10.to_string(), TypeOfString::F64),
+            ),
+            (
+                "LOG2_10".to_string(),
+                (std::f64::consts::LOG2_10.to_string(), TypeOfString::F64),
+            ),
+            (
+                "LOG2_E".to_string(),
+                (std::f64::consts::LOG2_E.to_string(), TypeOfString::F64),
+            ),
+            (
+                "LOG10_2".to_string(),
+                (std::f64::consts::LOG10_2.to_string(), TypeOfString::F64),
+            ),
+            (
+                "LOG10_E".to_string(),
+                (std::f64::consts::LOG10_E.to_string(), TypeOfString::F64),
+            ),
+            (
+                "PI".to_string(),
+                (std::f64::consts::PI.to_string(), TypeOfString::F64),
+            ),
+            (
+                "SQRT_2".to_string(),
+                (std::f64::consts::SQRT_2.to_string(), TypeOfString::F64),
+            ),
+            (
+                "TAU".to_string(),
+                (std::f64::consts::TAU.to_string(), TypeOfString::F64),
+            ),
+        ];
     }
 
     pub fn expr_wrapper(exp: Expr, config: EvalConfig) -> Expr {
@@ -300,12 +261,16 @@ pub mod utils {
 
         if config.include_maths {
             for (key, (str_value, type_of)) in math_consts() {
-                if type_of == INT64 {
+                if type_of == TypeOfString::INT64 {
                     result = result.value(key, str_value.parse::<i64>().unwrap())
-                } else if type_of == F64 {
+                } else if type_of == TypeOfString::F64 {
                     result = result.value(key, str_value.parse::<f64>().unwrap())
                 } else {
-                    log::warn!("{:?}({}) is not supported math constant :: SKIPPED", type_of, str_value);
+                    log::warn!(
+                        "{:?}({}) is not supported math constant :: SKIPPED",
+                        type_of,
+                        str_value
+                    );
                 }
             }
         }
@@ -440,18 +405,18 @@ pub mod utils {
 
     fn str_to_tz(timezone: String) -> chrono_tz::Tz {
         match timezone.as_str() {
-            US_ALASKA => chrono_tz::US::Alaska,
-            US_ALEUTIAN => chrono_tz::US::Aleutian,
-            US_ARIZONA => chrono_tz::US::Arizona,
-            US_CENTRAL => chrono_tz::US::Central,
-            US_EASTINDIANA => chrono_tz::US::EastIndiana,
-            US_EASTERN => chrono_tz::US::Eastern,
-            US_HAWAII => chrono_tz::US::Hawaii,
-            US_INDIANA_STARKE => chrono_tz::US::IndianaStarke,
-            US_MICHIGAN => chrono_tz::US::Michigan,
-            US_MOUNTAIN => chrono_tz::US::Mountain,
-            US_PACIFIC => chrono_tz::US::Pacific,
-            US_SAMOA => chrono_tz::US::Samoa,
+            consts::tz::US_ALASKA => chrono_tz::US::Alaska,
+            consts::tz::US_ALEUTIAN => chrono_tz::US::Aleutian,
+            consts::tz::US_ARIZONA => chrono_tz::US::Arizona,
+            consts::tz::US_CENTRAL => chrono_tz::US::Central,
+            consts::tz::US_EASTINDIANA => chrono_tz::US::EastIndiana,
+            consts::tz::US_EASTERN => chrono_tz::US::Eastern,
+            consts::tz::US_HAWAII => chrono_tz::US::Hawaii,
+            consts::tz::US_INDIANA_STARKE => chrono_tz::US::IndianaStarke,
+            consts::tz::US_MICHIGAN => chrono_tz::US::Michigan,
+            consts::tz::US_MOUNTAIN => chrono_tz::US::Mountain,
+            consts::tz::US_PACIFIC => chrono_tz::US::Pacific,
+            consts::tz::US_SAMOA => chrono_tz::US::Samoa,
             _ => {
                 log::warn!("Defaulted to UTC timezone");
                 return chrono_tz::UTC;

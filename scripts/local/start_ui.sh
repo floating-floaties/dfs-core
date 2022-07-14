@@ -2,6 +2,6 @@
 
 set -e -o xtrace
 
-cd ui
+cd ./ui
 
 npm run web

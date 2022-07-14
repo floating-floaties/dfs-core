@@ -9,23 +9,23 @@ pub mod spec {
     };
 
     use eval; 
-    use serde;
+    use serde::{Serialize, Deserialize};
 
     use crate::core::utils::utils;
 
-    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
     pub struct Case {
         pub condition: String,
         pub reply: String,
     }
 
-    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
     pub struct Dialog {
         pub intent: String,
         pub cases: Vec<Case>,
     }
 
-    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
     pub struct Spec {
         pub intents: Vec<String>,
         pub context: HashMap<String, String>,
