@@ -11,7 +11,9 @@ pub mod spec {
     use eval; 
     use serde::{Serialize, Deserialize};
 
-    use crate::core::utils::utils;
+    use eval_utility::eval_wrapper::{expr_wrapper, EvalConfig};
+
+    // use crate::core::utils::utils;
 
     #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
     pub struct Case {
@@ -102,7 +104,7 @@ pub mod spec {
             .value("ctx", &self.context)
             .value("sys", &self.system);
 
-            return utils::expr_wrapper(exp, utils::EvalConfig::default());
+            return expr_wrapper(exp, EvalConfig::default());
         }
 
         pub fn eval<S: AsRef<str>>(&self, expression: S) -> eval::Value {
