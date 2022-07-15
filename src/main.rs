@@ -5,6 +5,7 @@ use actix_files::NamedFile;
 use actix_web::{HttpRequest, Result};
 use actix_cors::Cors;
 use actix_web::http::header;
+use actix_web::{http::header::ContentType};
 
 mod core;
 use crate::core::spec::Spec;
@@ -21,9 +22,15 @@ struct ConditionRequest {
     condition: String,
 }
 
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+struct ConditionResponse {
+    message: String,
+    error: bool,
+}
+
 #[get("/")]
 async fn hello() -> impl Responder {
-    HttpResponse::Ok().body("Hello world!")
+    HttpResponse::Ok().body("Hello world!!")
 }
 
 #[post("/echo")]
@@ -37,33 +44,57 @@ async fn greet(name: web::Path<String>) -> impl Responder {
 }
 
 #[post("/condition")]
-async fn test_condition(req_body: String) -> impl Responder {
+async fn test_condition(req_body: String) -> web::Json<ConditionResponse> {
     let mut spec = Spec::default();
     let req = serde_json::from_str::<ConditionRequest>(req_body.as_str());
-
+    println!("Req body: {}", req_body);
+    println!("Req parsed: {:?}", req);
     if req.is_err() {
 
         // return HttpResponse::InternalServerError().body(serde_json::json!({
         //     "message": "Failed to parse json",
         //     "error": true,
         // }));
-        log::error!("Failed to parse json: {:?}", req);
-        return HttpResponse::InternalServerError().body("Failed to parse json");
+        let err_msg = format!("Failed to parse json: {:?}", req);
+        // return HttpResponse::InternalServerError().body(err_msg);
+
+        // return HttpResponse::Ok()
+        // // .content_type(ContentType::)
+        // .insert_header(("Content-Type", "application/json"))
+        // .json(serde_json::json!({
+        //     "result": err_msg,
+        //     "error": true,
+        // }))
+
+        return web::Json(ConditionResponse {
+            message: err_msg,
+            error: true,
+        });
     }
 
     let req = req.unwrap();
     // log::info!("Request: {:?}", req);
-    log::info!("Request Spec context: {:?}", req.spec.context);
-    log::info!("Request Spec system: {:?}", req.spec.system);
-    log::info!("Codition: {:?}", req.condition);
+    println!("Request Spec context: {:?}", req.spec.context);
+    println!("Request Spec system: {:?}", req.spec.system);
+    println!("Codition: {:?}", req.condition);
 
     spec.context = req.spec.context;
     spec.system = req.spec.system;
 
     let result = spec.eval(req.condition);
-    log::info!("Result: {:?}", result);
+    let res = format!("Result: {:?}", result);
 
-    HttpResponse::Ok().body(result.to_string())
+    // HttpResponse::Ok()
+    // .insert_header(("Content-Type", "application/json"))
+    // .json(serde_json::json!({
+    //     "result": res,
+    //     "error": false,
+    // }))
+
+    return web::Json(ConditionResponse {
+        message: res,
+        error: true,
+    });
 }
 
 #[tokio::main]
@@ -83,16 +114,16 @@ async fn main() -> std::io::Result<()> {
 
     println!("Running on: http://{host}:{port}");
     HttpServer::new(|| {
-        let cors = Cors::default()
-            .allowed_origin("https://floaties.dudi.win")
-            .allowed_methods(vec!["GET", "POST"])
-            .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT])
-            .allowed_header(header::CONTENT_TYPE)
-            .allowed_header(header::ACCESS_CONTROL_ALLOW_ORIGIN)
-            .max_age(3600);
+        // let cors = Cors::permissive()
+        //     .allowed_origin("https://floaties.dudi.win")
+        //     .allowed_methods(vec!["GET", "POST"])
+        //     .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT])
+        //     .allowed_header(header::CONTENT_TYPE)
+        //     .allowed_header(header::ACCESS_CONTROL_ALLOW_ORIGIN)
+        //     .max_age(3600);
         
         App::new()
-            .wrap(cors)
+            // .wrap(cors)
             .service(hello)
             .service(echo)
             .service(greet)

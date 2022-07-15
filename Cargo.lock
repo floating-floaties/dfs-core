@@ -578,9 +578,9 @@ dependencies = [
 
 [[package]]
 name = "eval-utility"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7a48673ff31fe90f1394fd7bc2cbe29c983d003444c1fc2b57c07dc105cc19f"
+checksum = "66d05ac2fff956cc9cda077b561397c58506de8d7164e3a21f7b495db98e9973"
 dependencies = [
  "chrono",
  "chrono-tz",
