@@ -14,14 +14,14 @@ mod eval {
     #[test]
     fn global_variables() {
         let user_spec = Spec::default();
-        assert_eq!(user_spec.eval("MIN_INT"), to_value(std::i64::MIN));
-        assert_eq!(user_spec.eval("MAX_INT"), to_value(std::i64::MAX));
-        assert_eq!(user_spec.eval("MAX_FLOAT"), to_value(std::f64::MAX));
-        assert_eq!(user_spec.eval("MIN_FLOAT"), to_value(std::f64::MIN));
-        assert_eq!(user_spec.eval("NAN"), to_value(std::f64::NAN));
-        assert_eq!(user_spec.eval("INFINITY"), to_value(std::f64::INFINITY));
+        assert_eq!(user_spec.eval("MIN_INT").unwrap(), to_value(std::i64::MIN));
+        assert_eq!(user_spec.eval("MAX_INT").unwrap(), to_value(std::i64::MAX));
+        assert_eq!(user_spec.eval("MAX_FLOAT").unwrap(), to_value(std::f64::MAX));
+        assert_eq!(user_spec.eval("MIN_FLOAT").unwrap(), to_value(std::f64::MIN));
+        assert_eq!(user_spec.eval("NAN").unwrap(), to_value(std::f64::NAN));
+        assert_eq!(user_spec.eval("INFINITY").unwrap(), to_value(std::f64::INFINITY));
         assert_eq!(
-            user_spec.eval("NEG_INFINITY"),
+            user_spec.eval("NEG_INFINITY").unwrap(),
             to_value(std::f64::NEG_INFINITY)
         );
     }
@@ -30,100 +30,100 @@ mod eval {
     fn literal() {
         let user_spec = Spec::default();
 
-        assert_eq!(user_spec.eval("42"), 42);
-        assert_eq!(user_spec.eval("0-42"), -42);
-        assert_eq!(user_spec.eval("true"), true);
-        assert_eq!(user_spec.eval("false"), false);
-        assert_eq!(user_spec.eval("\"42\""), "42");
-        assert_eq!(user_spec.eval("'42'"), "42");
-        assert_eq!(user_spec.eval("array(42, 42)"), to_value(vec![42; 2]));
-        assert_eq!(user_spec.eval("array()"), to_value(vec![0; 0]));
-        assert_eq!(user_spec.eval("0..5"), to_value(vec![0, 1, 2, 3, 4]));
+        assert_eq!(user_spec.eval("42").unwrap(), 42);
+        assert_eq!(user_spec.eval("0-42").unwrap(), -42);
+        assert_eq!(user_spec.eval("true").unwrap(), true);
+        assert_eq!(user_spec.eval("false").unwrap(), false);
+        assert_eq!(user_spec.eval("\"42\"").unwrap(), "42");
+        assert_eq!(user_spec.eval("'42'").unwrap(), "42");
+        assert_eq!(user_spec.eval("array(42, 42)").unwrap(), to_value(vec![42; 2]));
+        assert_eq!(user_spec.eval("array()").unwrap(), to_value(vec![0; 0]));
+        assert_eq!(user_spec.eval("0..5").unwrap(), to_value(vec![0, 1, 2, 3, 4]));
     }
 
     #[test]
     fn str() {
         let user_spec = Spec::default();
         let expected_ctx_str = "{\"some_var\":\"42\",\"something\":\"true\"}";
-        assert_eq!(user_spec.eval("str(ctx)"), expected_ctx_str);
-        assert_eq!(user_spec.eval("str(42)"), "42");
-        assert_eq!(user_spec.eval("str(42.42)"), "42.42");
-        assert_eq!(user_spec.eval("str(true)"), "true");
-        assert_eq!(user_spec.eval("str(array(42, 42))"), to_value("[42,42]"));
-        assert_eq!(user_spec.eval("str(array())"), to_value("[]"));
-        assert_eq!(user_spec.eval("str(null)"), to_value("null"));
+        assert_eq!(user_spec.eval("str(ctx)").unwrap(), expected_ctx_str);
+        assert_eq!(user_spec.eval("str(42)").unwrap(), "42");
+        assert_eq!(user_spec.eval("str(42.42)").unwrap(), "42.42");
+        assert_eq!(user_spec.eval("str(true)").unwrap(), "true");
+        assert_eq!(user_spec.eval("str(array(42, 42))").unwrap(), to_value("[42,42]"));
+        assert_eq!(user_spec.eval("str(array())").unwrap(), to_value("[]"));
+        assert_eq!(user_spec.eval("str(null)").unwrap(), to_value("null"));
     }
 
     #[test]
     fn bool() {
         let mut user_spec = Spec::default();
 
-        assert_eq!(user_spec.eval("bool(ctx)"), true);
+        assert_eq!(user_spec.eval("bool(ctx)").unwrap(), true);
         user_spec.context = HashMap::new();
-        assert_eq!(user_spec.eval("bool(ctx)"), false);
+        assert_eq!(user_spec.eval("bool(ctx)").unwrap(), false);
 
-        assert_eq!(user_spec.eval("bool(1)"), true);
-        assert_eq!(user_spec.eval("bool(1.0)"), true);
-        assert_eq!(user_spec.eval("bool(0)"), false);
-        assert_eq!(user_spec.eval("bool(0.0)"), false);
-        assert_eq!(user_spec.eval("bool(true)"), true);
-        assert_eq!(user_spec.eval("bool(false)"), false);
+        assert_eq!(user_spec.eval("bool(1)").unwrap(), true);
+        assert_eq!(user_spec.eval("bool(1.0)").unwrap(), true);
+        assert_eq!(user_spec.eval("bool(0)").unwrap(), false);
+        assert_eq!(user_spec.eval("bool(0.0)").unwrap(), false);
+        assert_eq!(user_spec.eval("bool(true)").unwrap(), true);
+        assert_eq!(user_spec.eval("bool(false)").unwrap(), false);
 
-        assert_eq!(user_spec.eval("bool(42)"), true);
-        assert_eq!(user_spec.eval("bool(42.42)"), true);
-        assert_eq!(user_spec.eval("bool(0-42)"), true);
-        assert_eq!(user_spec.eval("bool(0-42.42)"), true);
+        assert_eq!(user_spec.eval("bool(42)").unwrap(), true);
+        assert_eq!(user_spec.eval("bool(42.42)").unwrap(), true);
+        assert_eq!(user_spec.eval("bool(0-42)").unwrap(), true);
+        assert_eq!(user_spec.eval("bool(0-42.42)").unwrap(), true);
 
-        assert_eq!(user_spec.eval("bool('')"), false);
-        assert_eq!(user_spec.eval("bool(\"\")"), false);
-        assert_eq!(user_spec.eval("bool('42')"), true);
-        assert_eq!(user_spec.eval("bool(\"42\")"), true);
+        assert_eq!(user_spec.eval("bool('')").unwrap(), false);
+        assert_eq!(user_spec.eval("bool(\"\")").unwrap(), false);
+        assert_eq!(user_spec.eval("bool('42')").unwrap(), true);
+        assert_eq!(user_spec.eval("bool(\"42\")").unwrap(), true);
 
-        assert_eq!(user_spec.eval("bool(array(42, 42))"), true);
-        assert_eq!(user_spec.eval("bool(array())"), false);
-        assert_eq!(user_spec.eval("bool(0..42)"), true);
-        assert_eq!(user_spec.eval("bool(0..0)"), false);
-        assert_eq!(user_spec.eval("bool(null)"), false);
+        assert_eq!(user_spec.eval("bool(array(42, 42))").unwrap(), true);
+        assert_eq!(user_spec.eval("bool(array())").unwrap(), false);
+        assert_eq!(user_spec.eval("bool(0..42)").unwrap(), true);
+        assert_eq!(user_spec.eval("bool(0..0)").unwrap(), false);
+        assert_eq!(user_spec.eval("bool(null)").unwrap(), false);
     }
 
     #[test]
     fn float() {
         let user_spec = Spec::default();
-        assert_eq!(user_spec.eval("float(42)"), 42.0);
-        assert_eq!(user_spec.eval("float(42.42)"), 42.42);
-        assert_eq!(user_spec.eval("float('42.42')"), 42.42);
-        assert_eq!(user_spec.eval("float('42')"), 42.0);
-        assert_eq!(user_spec.eval("float(true)"), 1.0);
-        assert_eq!(user_spec.eval("float(false)"), 0.0);
-        assert_eq!(user_spec.eval("float('')"), to_value(std::f64::NAN));
+        assert_eq!(user_spec.eval("float(42)").unwrap(), 42.0);
+        assert_eq!(user_spec.eval("float(42.42)").unwrap(), 42.42);
+        assert_eq!(user_spec.eval("float('42.42')").unwrap(), 42.42);
+        assert_eq!(user_spec.eval("float('42')").unwrap(), 42.0);
+        assert_eq!(user_spec.eval("float(true)").unwrap(), 1.0);
+        assert_eq!(user_spec.eval("float(false)").unwrap(), 0.0);
+        assert_eq!(user_spec.eval("float('')").unwrap(), to_value(std::f64::NAN));
         assert_eq!(
-            user_spec.eval("float('not a num')"),
+            user_spec.eval("float('not a num')").unwrap(),
             to_value(std::f64::NAN)
         );
-        assert_eq!(user_spec.eval("float(ctx)"), to_value(std::f64::NAN));
+        assert_eq!(user_spec.eval("float(ctx)").unwrap(), to_value(std::f64::NAN));
         assert_eq!(
-            user_spec.eval("float(array(42, 42))"),
+            user_spec.eval("float(array(42, 42))").unwrap(),
             to_value(std::f64::NAN)
         );
-        assert_eq!(user_spec.eval("float(0..42)"), to_value(std::f64::NAN));
-        assert_eq!(user_spec.eval("float(null)"), to_value(std::f64::NAN));
+        assert_eq!(user_spec.eval("float(0..42)").unwrap(), to_value(std::f64::NAN));
+        assert_eq!(user_spec.eval("float(null)").unwrap(), to_value(std::f64::NAN));
     }
 
     #[test]
     fn int() {
         let user_spec = Spec::default();
-        assert_eq!(user_spec.eval("int(42)"), 42);
-        assert_eq!(user_spec.eval("int(42.42)"), 42);
-        assert_eq!(user_spec.eval("int('42.42')"), 42);
-        assert_eq!(user_spec.eval("int('42')"), 42);
-        assert_eq!(user_spec.eval("int(true)"), 1);
-        assert_eq!(user_spec.eval("int(false)"), 0);
-        assert_eq!(user_spec.eval("int('')"), 0);
-        assert_eq!(user_spec.eval("int('not a num')"), 0);
-        assert_eq!(user_spec.eval("int(ctx)"), 0);
-        assert_eq!(user_spec.eval("int(array(42, 42))"), 0);
-        assert_eq!(user_spec.eval("int(0..42)"), 0);
-        assert_eq!(user_spec.eval("int(null)"), 0);
+        assert_eq!(user_spec.eval("int(42)").unwrap(), 42);
+        assert_eq!(user_spec.eval("int(42.42)").unwrap(), 42);
+        assert_eq!(user_spec.eval("int('42.42')").unwrap(), 42);
+        assert_eq!(user_spec.eval("int('42')").unwrap(), 42);
+        assert_eq!(user_spec.eval("int(true)").unwrap(), 1);
+        assert_eq!(user_spec.eval("int(false)").unwrap(), 0);
+        assert_eq!(user_spec.eval("int('')").unwrap(), 0);
+        assert_eq!(user_spec.eval("int('not a num')").unwrap(), 0);
+        assert_eq!(user_spec.eval("int(ctx)").unwrap(), 0);
+        assert_eq!(user_spec.eval("int(array(42, 42))").unwrap(), 0);
+        assert_eq!(user_spec.eval("int(0..42)").unwrap(), 0);
+        assert_eq!(user_spec.eval("int(null)").unwrap(), 0);
     }
 
     #[test]
@@ -132,8 +132,8 @@ mod eval {
         let date = Date::now().date();
         let day = date.day();
 
-        assert_eq!(user_spec.eval("day()"), day);
-        assert_eq!(user_spec.eval("day('_')"), day);
+        assert_eq!(user_spec.eval("day()").unwrap(), day);
+        assert_eq!(user_spec.eval("day('_')").unwrap(), day);
     }
 
     #[test]
@@ -142,8 +142,8 @@ mod eval {
         let date = Date::now().date();
         let month = date.month();
 
-        assert_eq!(user_spec.eval("month()"), month);
-        assert_eq!(user_spec.eval("month('_')"), month);
+        assert_eq!(user_spec.eval("month()").unwrap(), month);
+        assert_eq!(user_spec.eval("month('_')").unwrap(), month);
     }
 
     #[test]
@@ -151,45 +151,45 @@ mod eval {
         let user_spec = Spec::default();
         let date = Date::now().date();
         let year = date.year();
-        assert_eq!(user_spec.eval("year()"), year);
-        assert_eq!(user_spec.eval("year('_')"), year);
+        assert_eq!(user_spec.eval("year()").unwrap(), year);
+        assert_eq!(user_spec.eval("year('_')").unwrap(), year);
     }
 
     #[test]
     fn weekday() {
         let user_spec = Spec::default();
         let weekday_num = Date::now().weekday().number_from_monday();
-        assert_eq!(user_spec.eval("weekday('_')"), weekday_num);
-        assert_eq!(user_spec.eval("is_weekday('_')"), weekday_num < 6);
+        assert_eq!(user_spec.eval("weekday('_')").unwrap(), weekday_num);
+        assert_eq!(user_spec.eval("is_weekday('_')").unwrap(), weekday_num < 6);
 
-        assert_eq!(user_spec.eval("weekday()"), weekday_num);
-        assert_eq!(user_spec.eval("is_weekday()"), weekday_num < 6);
+        assert_eq!(user_spec.eval("weekday()").unwrap(), weekday_num);
+        assert_eq!(user_spec.eval("is_weekday()").unwrap(), weekday_num < 6);
     }
 
     #[test]
     fn time() {
         let user_spec = Spec::default();
-        assert_eq!(user_spec.eval("time('_', 'h')"), Date::now().time().hour());
-        assert_eq!(user_spec.eval("time('_', 'm')"), Date::now().time().minute());
-        assert_eq!(user_spec.eval("time('_', 's')"), Date::now().time().second());
+        assert_eq!(user_spec.eval("time('_', 'h')").unwrap(), Date::now().time().hour());
+        assert_eq!(user_spec.eval("time('_', 'm')").unwrap(), Date::now().time().minute());
+        assert_eq!(user_spec.eval("time('_', 's')").unwrap(), Date::now().time().second());
 
-        assert_eq!(user_spec.eval("time('_', 'hour')"), Date::now().time().hour());
+        assert_eq!(user_spec.eval("time('_', 'hour')").unwrap(), Date::now().time().hour());
         assert_eq!(
-            user_spec.eval("time('_', 'minute')"),
+            user_spec.eval("time('_', 'minute')").unwrap(),
             Date::now().time().minute()
         );
         assert_eq!(
-            user_spec.eval("time('_', 'second')"),
+            user_spec.eval("time('_', 'second')").unwrap(),
             Date::now().time().second()
         );
 
-        assert_eq!(user_spec.eval("time('_', 'hours')"), Date::now().time().hour());
+        assert_eq!(user_spec.eval("time('_', 'hours')").unwrap(), Date::now().time().hour());
         assert_eq!(
-            user_spec.eval("time('_', 'minutes')"),
+            user_spec.eval("time('_', 'minutes')").unwrap(),
             Date::now().time().minute()
         );
         assert_eq!(
-            user_spec.eval("time('_', 'seconds')"),
+            user_spec.eval("time('_', 'seconds')").unwrap(),
             Date::now().time().second()
         );
     }

@@ -4,16 +4,48 @@
 mod utils;
 
 pub mod spec {
-    use std::{
-        collections::{BTreeMap, HashMap},
-    };
+    use std::collections::{BTreeMap, HashMap};
 
-    use eval; 
-    use serde::{Serialize, Deserialize};
+    use eval;
+    use serde::{Deserialize, Serialize};
 
     use eval_utility::eval_wrapper::{expr_wrapper, EvalConfig};
-
     // use crate::core::utils::utils;
+
+    pub mod web {
+        use crate::core::spec::Spec;
+
+        #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+        pub struct ResultType {
+            pub value: String,
+            pub instanceof: String,
+        }
+
+        #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+        pub struct ConditionRequest {
+            pub spec: Spec,
+            pub condition: String,
+        }
+
+        #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+        pub struct ConditionResponse {
+            pub message: String,
+            pub result: Option<ResultType>,
+            pub error: bool,
+        }
+    }
+
+    macro_rules! result_type {
+        ($value_of:expr, $type_of:expr) => {{
+            let result = $value_of.to_string();
+            let instanceof = $type_of.to_owned();
+
+            Ok(web::ResultType {
+                value: result,
+                instanceof,
+            })
+        }};
+    }
 
     #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
     pub struct Case {
@@ -101,25 +133,64 @@ pub mod spec {
 
         pub fn expr(&self, expression: String) -> eval::Expr {
             let exp = eval::Expr::new(expression)
-            .value("ctx", &self.context)
-            .value("sys", &self.system);
+                .value("ctx", &self.context)
+                .value("sys", &self.system);
 
             return expr_wrapper(exp, EvalConfig::default());
         }
 
-        pub fn eval<S: AsRef<str>>(&self, expression: S) -> eval::Value {
+        pub fn eval<S: AsRef<str>>(&self, expression: S) -> Result<eval::Value, String> {
             let str_like = expression.as_ref().to_owned();
             let result = self.expr(str_like).exec();
 
             if result.is_err() {
-                panic!(
-                    "Failed to parse expression: \"{}\" {:?}",
+                let message = format!(
+                    "Failed to parse expression: \"{}\"; {:?}",
                     expression.as_ref().to_owned(),
-                    result
-                )
+                    result,
+                );
+                return Err(message);
             }
 
-            return result.unwrap();
+            return Ok(result.unwrap());
+        }
+
+        pub fn format_eval_for_response<S: AsRef<str>>(
+            &self,
+            expression: S,
+        ) -> Result<web::ResultType, String> {
+            let evaluated_expression = self.eval(expression);
+
+            match evaluated_expression {
+                Ok(value) => match value {
+                    eval::Value::Number(x) => {
+                        let is_f64 = x.is_f64();
+                        let value = if is_f64 {
+                            x.as_f64().unwrap().to_string()
+                        } else {
+                            x.as_i64().unwrap().to_string()
+                        };
+                        let instanceof = if is_f64 { "float" } else { "integer" };
+                        result_type!(value, instanceof)
+                    }
+                    eval::Value::Bool(x) => {
+                        result_type!(x, "boolean")
+                    }
+                    eval::Value::String(x) => {
+                        result_type!(x, "string")
+                    }
+                    eval::Value::Array(x) => {
+                        result_type!(serde_json::to_string(&x).unwrap(), "array")
+                    }
+                    eval::Value::Object(x) => {
+                        result_type!(serde_json::to_string(&x).unwrap(), "object")
+                    }
+                    _ => {
+                        result_type!("null", "null")
+                    }
+                },
+                Err(message) => Err(message),
+            }
         }
 
         pub fn from_yaml(content: &String) -> Self {
