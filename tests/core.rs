@@ -7,7 +7,7 @@ mod eval {
 
     use chrono::offset::Utc as Date;
     use chrono::{Datelike, Timelike};
-    use eval::to_value;
+    use resolver::to_value;
 
     use crate::core::spec::Spec;
 

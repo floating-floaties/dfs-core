@@ -6,7 +6,7 @@ mod utils;
 pub mod spec {
     use std::collections::{BTreeMap, HashMap};
 
-    use eval;
+    use resolver;
     use serde::{Deserialize, Serialize};
 
     use eval_utility::eval_wrapper::{expr_wrapper, EvalConfig};
@@ -131,15 +131,15 @@ pub mod spec {
             Spec::new(intents, dialogs, context, system)
         }
 
-        pub fn expr(&self, expression: String) -> eval::Expr {
-            let exp = eval::Expr::new(expression)
+        pub fn expr(&self, expression: String) -> resolver::Expr {
+            let exp = resolver::Expr::new(expression)
                 .value("ctx", &self.context)
                 .value("sys", &self.system);
 
             return expr_wrapper(exp, EvalConfig::default());
         }
 
-        pub fn eval<S: AsRef<str>>(&self, expression: S) -> Result<eval::Value, String> {
+        pub fn eval<S: AsRef<str>>(&self, expression: S) -> Result<resolver::Value, String> {
             let str_like = expression.as_ref().to_owned();
             let result = self.expr(str_like).exec();
 
@@ -163,7 +163,7 @@ pub mod spec {
 
             match evaluated_expression {
                 Ok(value) => match value {
-                    eval::Value::Number(x) => {
+                    resolver::Value::Number(x) => {
                         let is_f64 = x.is_f64();
                         let (value, instanceof) = if is_f64 {
                             (x.as_f64().unwrap().to_string(), "float")
@@ -172,16 +172,16 @@ pub mod spec {
                         };
                         result_type!(value, instanceof)
                     }
-                    eval::Value::Bool(x) => {
+                    resolver::Value::Bool(x) => {
                         result_type!(x, "boolean")
                     }
-                    eval::Value::String(x) => {
+                    resolver::Value::String(x) => {
                         result_type!(x, "string")
                     }
-                    eval::Value::Array(x) => {
+                    resolver::Value::Array(x) => {
                         result_type!(serde_json::to_string(&x).unwrap(), "array")
                     }
-                    eval::Value::Object(x) => {
+                    resolver::Value::Object(x) => {
                         result_type!(serde_json::to_string(&x).unwrap(), "object")
                     }
                     _ => {
