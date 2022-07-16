@@ -165,12 +165,11 @@ pub mod spec {
                 Ok(value) => match value {
                     eval::Value::Number(x) => {
                         let is_f64 = x.is_f64();
-                        let value = if is_f64 {
-                            x.as_f64().unwrap().to_string()
+                        let (value, instanceof) = if is_f64 {
+                            (x.as_f64().unwrap().to_string(), "float")
                         } else {
-                            x.as_i64().unwrap().to_string()
+                            (x.as_i64().unwrap().to_string(), "integer")
                         };
-                        let instanceof = if is_f64 { "float" } else { "integer" };
                         result_type!(value, instanceof)
                     }
                     eval::Value::Bool(x) => {

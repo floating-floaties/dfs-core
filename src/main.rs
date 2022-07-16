@@ -17,38 +17,38 @@ async fn static_route(req: HttpRequest) -> Result<NamedFile> {
 
 #[post("/condition")]
 async fn test_condition(req_body: String) -> web::Json<spec::web::ConditionResponse> {
+    println!("{}", req_body.as_str());
     let req = serde_json::from_str::<spec::web::ConditionRequest>(req_body.as_str());
     
-    if req.is_err() {
-        let err_msg = format!("Failed to parse json: {:?}", req);
-        return web::Json(spec::web::ConditionResponse {
-            message: err_msg,
-            result: None,
-            error: true,
-        });
-    }
-
-    let req = req.unwrap();
-    let spec = req.spec;
-
-    let evalutated = spec.format_eval_for_response(req.condition);
-    match evalutated {
-        Ok(value) => {
-            return web::Json(spec::web::ConditionResponse {
-                message: "Evaluated expression".to_string(),
-                result: Some(value),
-                error: false,
-            });
+    match req {
+        Ok(req) => {
+            let evalutated = req.spec.format_eval_for_response(req.condition);
+            match evalutated {
+                Ok(value) => {
+                    web::Json(spec::web::ConditionResponse {
+                        message: "Evaluated expression".to_string(),
+                        result: Some(value),
+                        error: false,
+                    })
+                },
+                Err(message) => {
+                    web::Json(spec::web::ConditionResponse {
+                        message,
+                        result: None,
+                        error: true,
+                    })
+                }
+            }
         },
-        Err(message) => {
-            return web::Json(spec::web::ConditionResponse {
-                message,
+        Err(error) => {
+            let err_msg = format!("Failed to parse json: {:?}", error.to_string());
+            web::Json(spec::web::ConditionResponse {
+                message: err_msg,
                 result: None,
                 error: true,
-            });
-        }
+            })
+        },
     }
-    
 }
 
 
