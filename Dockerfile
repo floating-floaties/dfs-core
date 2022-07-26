@@ -3,19 +3,14 @@ ARG RUST_VERSION=latest
 
 FROM node:$NODE_VERSION as build_ui
 
-WORKDIR /uiapp
+ARG UI_LOC=/uiapp
+RUN git clone https://github.com/floating-floaties/dfs-ui.git $UI_LOC
+
+WORKDIR $UI_LOC
 RUN npm install --location=global expo-cli sharp-cli
-
-COPY ./ui/yarn.lock .
-COPY ./ui/package.json .
-
 RUN yarn install --ignore-enigines
-
-COPY ./ui .
-
 RUN expo build:web
 
-# 
 FROM rust:$RUST_VERSION as build_api
 
 RUN USER=root cargo new --bin /dfs
@@ -34,7 +29,6 @@ COPY ./examples ./examples
 RUN rm ./target/release/deps/dfs*
 RUN cargo build --release
 
-# 
 FROM rust:$RUST_VERSION
 
 COPY --from=build_api /dfs/target/release/dfs ./dfs

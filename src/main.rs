@@ -63,7 +63,17 @@ async fn main() -> std::io::Result<()> {
         _ => 8080,
     };
 
-    println!("Server will run on {host}:{port}");
+    let urls = [
+        format!("http://{}:{}/", host, port),
+        format!("http://{}:{}/static/index.html", host, port),
+        format!("http://localhost:{}/static/index.html", port),
+        "http://localhost:19006".to_string(),
+    ];
+
+    println!("Server will run on http://{host}:{port}/static/index.html");
+    for url in urls {
+        println!("\t- {url}")
+    }
     HttpServer::new(|| {
         let env: String = match std::env::var("ENV") {
             Ok(v) => v,
@@ -71,12 +81,18 @@ async fn main() -> std::io::Result<()> {
         };
 
         let mut cors = if env == "development" {
-            Cors::permissive().allowed_origin("http://localhost:19006")
+            Cors::permissive()
+            .allowed_origin("http://localhost:19006")
+            .allowed_origin("http://localhost:8080")
+            .allowed_origin("http://localhost:80")
+            .allowed_origin("localhost")
         } else {
-            Cors::default().allowed_origin("https://floaties.dudi.win")
+            Cors::default()
+                .allowed_origin("https://floaties.dudi.win")
         };
 
         cors = cors
+        .   send_wildcard()
             .allowed_methods(vec!["GET", "POST"])
             .allowed_header(http::header::ACCEPT)
             .allowed_header(http::header::AUTHORIZATION)
