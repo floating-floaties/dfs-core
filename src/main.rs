@@ -19,27 +19,23 @@ async fn static_route(req: HttpRequest) -> Result<NamedFile> {
 async fn test_condition(req_body: String) -> web::Json<spec::web::ConditionResponse> {
     println!("{}", req_body.as_str());
     let req = serde_json::from_str::<spec::web::ConditionRequest>(req_body.as_str());
-    
+
     match req {
         Ok(req) => {
             let evalutated = req.spec.format_eval_for_response(req.condition);
             match evalutated {
-                Ok(value) => {
-                    web::Json(spec::web::ConditionResponse {
-                        message: "Evaluated expression".to_string(),
-                        result: Some(value),
-                        error: false,
-                    })
-                },
-                Err(message) => {
-                    web::Json(spec::web::ConditionResponse {
-                        message,
-                        result: None,
-                        error: true,
-                    })
-                }
+                Ok(value) => web::Json(spec::web::ConditionResponse {
+                    message: "Evaluated expression".to_string(),
+                    result: Some(value),
+                    error: false,
+                }),
+                Err(message) => web::Json(spec::web::ConditionResponse {
+                    message,
+                    result: None,
+                    error: true,
+                }),
             }
-        },
+        }
         Err(error) => {
             let err_msg = format!("Failed to parse json: {:?}", error.to_string());
             web::Json(spec::web::ConditionResponse {
@@ -47,16 +43,14 @@ async fn test_condition(req_body: String) -> web::Json<spec::web::ConditionRespo
                 result: None,
                 error: true,
             })
-        },
+        }
     }
 }
-
 
 #[get("/")]
 async fn home() -> impl Responder {
     HttpResponse::Ok().body("How do you do?")
 }
-
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -69,6 +63,7 @@ async fn main() -> std::io::Result<()> {
         _ => 8080,
     };
 
+    println!("Server will run on {host}:{port}");
     HttpServer::new(|| {
         let env: String = match std::env::var("ENV") {
             Ok(v) => v,

@@ -21,6 +21,7 @@ log = "0.4.17"
 # internal deps
 resolver = "^0.1"
 eval-utility = "^0.1"
+inflection-rs = "^0.1"
 
 # web deps
 tokio = { version = "1.19.2", features = ["full"] }
