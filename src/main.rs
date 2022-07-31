@@ -78,22 +78,22 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
         let env: String = match std::env::var("ENV") {
             Ok(v) => v,
-            _ => "production".to_owned(),
+            _ => "development".to_owned(),
         };
 
         let cors = if env == "development" {
             Cors::permissive()
-            .allowed_origin("http://localhost:19006")
-            .allowed_origin("http://localhost:8080")
-            .allowed_origin("http://localhost:80")
-            .allowed_origin("localhost")
-            .send_wildcard()
-        } else {
-            Cors::default()
+                .allowed_origin("http://localhost:19006")
+                .allowed_origin("http://localhost:8080")
+                .allowed_origin("http://localhost:80")
+                .allowed_origin("localhost")
                 .allowed_origin("https://floaties.dudi.win")
+        } else {
+            Cors::default().allowed_origin("https://floaties.dudi.win")
         };
 
         let cors = cors
+            .send_wildcard()
             .allowed_methods(vec!["GET", "POST"])
             .allowed_header(http::header::ACCEPT)
             .allowed_header(http::header::AUTHORIZATION)
