@@ -10,13 +10,15 @@ name = "dfs"
 path = "src/main.rs"
 
 [dependencies]
-serde = { version = "1.0.138", features = ["derive"] }
-serde_yaml = "0.8.25"
+serde = { version = "1.0.140", features = ["derive"] }
+serde_yaml = "0.9.0"
 serde_json = "1.0.82"
 chrono = "0.4.19"
 chrono-tz = { version = "0.6.1", features = ["serde"] }
 regex = "1.6.0"
-log = "0.4.17"
+
+tracing = "0.1.35"
+tracing-subscriber = "0.3.15"
 
 # internal deps
 resolver = "^0.1"
@@ -24,10 +26,10 @@ eval-utility = "^0.1"
 inflection-rs = "^0.1"
 
 # web deps
-tokio = { version = "1.19.2", features = ["full"] }
-mini-redis = "0.4"
+tokio = { version = "1.20.1", features = ["full"] }
+mini-redis = "0.4.1"
 actix-files = "0.6"
-actix-web = { version = "4" }
+actix-web = { version = "4.1.0" }
 actix-cors = "0.6.1"
 reqwest = "0.11.11"
 

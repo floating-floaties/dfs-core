@@ -37,9 +37,9 @@ async fn test_condition(req_body: String) -> web::Json<spec::web::ConditionRespo
             }
         }
         Err(error) => {
-            let err_msg = format!("Failed to parse json: {:?}", error.to_string());
+            let message = format!("Failed to parse json: {:?}", error.to_string());
             web::Json(spec::web::ConditionResponse {
-                message: err_msg,
+                message,
                 result: None,
                 error: true,
             })
@@ -80,19 +80,19 @@ async fn main() -> std::io::Result<()> {
             _ => "production".to_owned(),
         };
 
-        let mut cors = if env == "development" {
+        let cors = if env == "development" {
             Cors::permissive()
             .allowed_origin("http://localhost:19006")
             .allowed_origin("http://localhost:8080")
             .allowed_origin("http://localhost:80")
             .allowed_origin("localhost")
+            .send_wildcard()
         } else {
             Cors::default()
                 .allowed_origin("https://floaties.dudi.win")
         };
 
-        cors = cors
-        .   send_wildcard()
+        let cors = cors
             .allowed_methods(vec!["GET", "POST"])
             .allowed_header(http::header::ACCEPT)
             .allowed_header(http::header::AUTHORIZATION)
