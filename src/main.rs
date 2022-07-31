@@ -1,3 +1,4 @@
+#[forbid(unsafe_code)]
 use std::path::PathBuf;
 
 use actix_cors::Cors;
@@ -60,7 +61,7 @@ async fn main() -> std::io::Result<()> {
     };
     let port: u16 = match std::env::var("PORT") {
         Ok(v) => v.parse::<u16>().unwrap(),
-        _ => 8080,
+        _ => 80,
     };
 
     let urls = [
