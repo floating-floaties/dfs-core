@@ -1,20 +1,14 @@
 #[forbid(unsafe_code)]
-use std::path::PathBuf;
 
 use actix_cors::Cors;
-use actix_files::NamedFile;
 use actix_web::{
-    get, http, post, web, App, HttpRequest, HttpResponse, HttpServer, Responder, Result,
+    get, http, post, web, App, HttpResponse, HttpServer, Responder
 };
 
 mod core;
 use crate::core::spec;
 // use crate::core::spec::Spec;
 
-async fn static_route(req: HttpRequest) -> Result<NamedFile> {
-    let path: PathBuf = req.match_info().query("filename").parse().unwrap();
-    return Ok(NamedFile::open(path)?);
-}
 
 #[post("/condition")]
 async fn test_condition(req_body: String) -> web::Json<spec::web::ConditionResponse> {
@@ -53,6 +47,14 @@ async fn home() -> impl Responder {
     HttpResponse::Ok().body("How do you do?")
 }
 
+#[get("/version")]
+async fn version() -> impl Responder {
+    HttpResponse::Ok().body(
+        std::fs::read_to_string("build-date.txt")
+        .unwrap_or("unknwon".to_string())
+    )
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let host: String = match std::env::var("HOST") {
@@ -66,12 +68,13 @@ async fn main() -> std::io::Result<()> {
 
     let urls = [
         format!("http://{}:{}/", host, port),
-        format!("http://{}:{}/static/index.html", host, port),
-        format!("http://localhost:{}/static/index.html", port),
-        "http://localhost:19006".to_string(),
+        format!("http://{}:{}", host, port),
+        format!("http://localhost:{}", port),
+        "https://floaties.dudi.win".to_string(),
+        "https://floaties-api.dudi.win".to_string(),
     ];
 
-    println!("Server will run on http://{host}:{port}/static/index.html");
+    println!("Server will run on http://{host}:{port}");
     for url in urls {
         println!("\t- {url}")
     }
@@ -109,7 +112,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(cors)
             .service(home)
             .service(test_condition)
-            .route("/{filename:.*}", web::get().to(static_route))
+            .service(version)
     })
     .bind((host, port))?
     .workers(2)
