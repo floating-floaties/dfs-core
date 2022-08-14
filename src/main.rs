@@ -1,12 +1,15 @@
-#[forbid(unsafe_code)]
+#![forbid(unsafe_code)]
 
 use actix_cors::Cors;
 use actix_web::{
     get, http, post, web, App, HttpResponse, HttpServer, Responder
 };
 
+// use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
+
 mod core;
 use crate::core::spec;
+
 // use crate::core::spec::Spec;
 
 
@@ -55,6 +58,16 @@ async fn version() -> impl Responder {
     )
 }
 
+// #[post("/token")]
+// async fn token(
+//     body
+// ) -> impl Responder {
+//     HttpResponse::Ok().body(
+//         std::fs::read_to_string("build-date.txt")
+//         .unwrap_or("unknwon".to_string())
+//     )
+// }
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let host: String = match std::env::var("HOST") {
@@ -78,6 +91,12 @@ async fn main() -> std::io::Result<()> {
     for url in urls {
         println!("\t- {url}")
     }
+
+    // let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
+    // builder.set_private_key_file("key.pem", SslFiletype::PEM).unwrap();
+    // builder.set_certificate_chain_file("cert.pem").unwrap();
+    // let config = aws_config::load_from_env().await;
+
     HttpServer::new(|| {
         let env: String = match std::env::var("ENV") {
             Ok(v) => v,
@@ -107,13 +126,15 @@ async fn main() -> std::io::Result<()> {
             .allowed_header(http::header::ACCEPT_ENCODING)
             .allowed_header(http::header::CONNECTION)
             .max_age(3600);
-
+        
         App::new()
             .wrap(cors)
             .service(home)
             .service(test_condition)
             .service(version)
+            // .service(token)
     })
+    // .bind_openssl(format!("{}:{}", host, port), builder)?
     .bind((host, port))?
     .workers(2)
     .run()
