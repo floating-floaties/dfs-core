@@ -15,19 +15,19 @@ pub mod spec {
     pub mod web {
         use crate::core::spec::Spec;
 
-        #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+        #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
         pub struct ResultType {
             pub value: String,
             pub instanceof: String,
         }
 
-        #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+        #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
         pub struct ConditionRequest {
             pub spec: Spec,
             pub condition: String,
         }
 
-        #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+        #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
         pub struct ConditionResponse {
             pub message: String,
             pub result: Option<ResultType>,
@@ -47,19 +47,19 @@ pub mod spec {
         }};
     }
 
-    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
     pub struct Case {
         pub condition: String,
         pub reply: String,
     }
 
-    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
     pub struct Dialog {
         pub intent: String,
         pub cases: Vec<Case>,
     }
 
-    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
     pub struct Spec {
         pub intents: Vec<String>,
         pub context: HashMap<String, String>,
@@ -136,7 +136,7 @@ pub mod spec {
                 .value("ctx", &self.context)
                 .value("sys", &self.system);
 
-            return expr_wrapper(exp, EvalConfig::default());
+            expr_wrapper(exp, EvalConfig::default())
         }
 
         pub fn eval<S: AsRef<str>>(&self, expression: S) -> Result<resolver::Value, String> {
@@ -152,7 +152,7 @@ pub mod spec {
                 return Err(message);
             }
 
-            return Ok(result.unwrap());
+            Ok(result.unwrap())
         }
 
         pub fn format_eval_for_response<S: AsRef<str>>(
@@ -192,12 +192,12 @@ pub mod spec {
             }
         }
 
-        pub fn from_yaml(content: &String) -> Self {
-            serde_yaml::from_str(&content).unwrap()
+        pub fn from_yaml(content: &str) -> Self {
+            serde_yaml::from_str(content).unwrap()
         }
 
-        pub fn from_json(content: &String) -> Self {
-            serde_json::from_str(&content).unwrap()
+        pub fn from_json(content: &str) -> Self {
+            serde_json::from_str(content).unwrap()
         }
 
         pub fn to_yaml(&self) -> String {

@@ -20,10 +20,10 @@ async fn test_condition(req_body: String) -> web::Json<spec::web::ConditionRespo
 
     match req {
         Ok(req) => {
-            let evalutated = req.spec.format_eval_for_response(req.condition);
-            match evalutated {
+            let evaluated = req.spec.format_eval_for_response(req.condition);
+            match evaluated {
                 Ok(value) => web::Json(spec::web::ConditionResponse {
-                    message: "Evaluated expression".to_string(),
+                    message: "Evaluated expression".into(),
                     result: Some(value),
                     error: false,
                 }),
@@ -52,9 +52,12 @@ async fn home() -> impl Responder {
 
 #[get("/version")]
 async fn version() -> impl Responder {
-    HttpResponse::Ok().body(
+    HttpResponse::Ok()
+
+        .insert_header(("Access-Control-Allow-Origin", "*"))
+    .body(
         std::fs::read_to_string("build-date.txt")
-        .unwrap_or("unknwon".to_string())
+        .unwrap_or_else(|_| "unknown".into())
     )
 }
 
@@ -64,7 +67,7 @@ async fn version() -> impl Responder {
 // ) -> impl Responder {
 //     HttpResponse::Ok().body(
 //         std::fs::read_to_string("build-date.txt")
-//         .unwrap_or("unknwon".to_string())
+//         .unwrap_or("unknown".to_string())
 //     )
 // }
 
@@ -72,25 +75,28 @@ async fn version() -> impl Responder {
 async fn main() -> std::io::Result<()> {
     let host: String = match std::env::var("HOST") {
         Ok(v) => v,
-        _ => "0.0.0.0".to_string(),
+        _ => "0.0.0.0".into(),
     };
     let port: u16 = match std::env::var("PORT") {
-        Ok(v) => v.parse::<u16>().unwrap(),
+        Ok(v) => v.parse::<u16>().expect("Invalid PORT number was provided"),
         _ => 80,
     };
 
-    let urls = [
-        format!("http://{}:{}/", host, port),
-        format!("http://{}:{}", host, port),
-        format!("http://localhost:{}", port),
-        "https://floaties.dudi.win".to_string(),
-        "https://floaties-api.dudi.win".to_string(),
-    ];
+    let domain: String = match std::env::var("DOMAIN") {
+        Ok(v) => v,
+        _ => "floatingfloaties.com".into(),
+    };
 
-    println!("Server will run on http://{host}:{port}");
-    for url in urls {
-        println!("\t- {url}")
-    }
+    let urls = [
+        "http://localhost:8080".into(),
+        format!("http://localhost:{port}"),
+        format!("http://{host}:8080"),
+        format!("http://{host}:{port}"),
+        format!("https://{domain}"),
+        format!("https://dev.{domain}"),
+        format!("https://qa.{domain}"),
+        format!("https://release.{domain}"),
+    ];
 
     // let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
     // builder.set_private_key_file("key.pem", SslFiletype::PEM).unwrap();
@@ -103,15 +109,20 @@ async fn main() -> std::io::Result<()> {
             _ => "development".to_owned(),
         };
 
-        let cors = if env == "development" {
+        let cors = if env.to_ascii_lowercase() == "development" {
             Cors::permissive()
-                .allowed_origin("http://localhost:19006")
+                .allowed_origin("http://0.0.0.0:3000")
+                .allowed_origin("http://0.0.0.0:8080")
+                .allowed_origin("http://localhost:3000")
                 .allowed_origin("http://localhost:8080")
-                .allowed_origin("http://localhost:80")
-                .allowed_origin("localhost")
-                .allowed_origin("https://floaties.dudi.win")
+                .allowed_origin("http://127.0.0.1:3000")
+                .allowed_origin("http://127.0.0.1:8080")
         } else {
-            Cors::default().allowed_origin("https://floaties.dudi.win")
+            Cors::default()
+                .allowed_origin("https://floatingfloaties.com")
+                .allowed_origin("https://dev.floatingfloaties.com")
+                .allowed_origin("https://qa.floatingfloaties.com")
+                .allowed_origin("https://release.floatingfloaties.com")
         };
 
         let cors = cors

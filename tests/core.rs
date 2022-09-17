@@ -14,15 +14,15 @@ mod eval {
     #[test]
     fn global_variables() {
         let user_spec = Spec::default();
-        assert_eq!(user_spec.eval("MIN_INT").unwrap(), to_value(std::i64::MIN));
-        assert_eq!(user_spec.eval("MAX_INT").unwrap(), to_value(std::i64::MAX));
-        assert_eq!(user_spec.eval("MAX_FLOAT").unwrap(), to_value(std::f64::MAX));
-        assert_eq!(user_spec.eval("MIN_FLOAT").unwrap(), to_value(std::f64::MIN));
-        assert_eq!(user_spec.eval("NAN").unwrap(), to_value(std::f64::NAN));
-        assert_eq!(user_spec.eval("INFINITY").unwrap(), to_value(std::f64::INFINITY));
+        assert_eq!(user_spec.eval("MIN_INT").unwrap(), to_value(i64::MIN));
+        assert_eq!(user_spec.eval("MAX_INT").unwrap(), to_value(i64::MAX));
+        assert_eq!(user_spec.eval("MAX_FLOAT").unwrap(), to_value(f64::MAX));
+        assert_eq!(user_spec.eval("MIN_FLOAT").unwrap(), to_value(f64::MIN));
+        assert_eq!(user_spec.eval("NAN").unwrap(), to_value(f64::NAN));
+        assert_eq!(user_spec.eval("INFINITY").unwrap(), to_value(f64::INFINITY));
         assert_eq!(
             user_spec.eval("NEG_INFINITY").unwrap(),
-            to_value(std::f64::NEG_INFINITY)
+            to_value(f64::NEG_INFINITY)
         );
     }
 
@@ -95,18 +95,18 @@ mod eval {
         assert_eq!(user_spec.eval("float('42')").unwrap(), 42.0);
         assert_eq!(user_spec.eval("float(true)").unwrap(), 1.0);
         assert_eq!(user_spec.eval("float(false)").unwrap(), 0.0);
-        assert_eq!(user_spec.eval("float('')").unwrap(), to_value(std::f64::NAN));
+        assert_eq!(user_spec.eval("float('')").unwrap(), to_value(f64::NAN));
         assert_eq!(
             user_spec.eval("float('not a num')").unwrap(),
-            to_value(std::f64::NAN)
+            to_value(f64::NAN)
         );
-        assert_eq!(user_spec.eval("float(ctx)").unwrap(), to_value(std::f64::NAN));
+        assert_eq!(user_spec.eval("float(ctx)").unwrap(), to_value(f64::NAN));
         assert_eq!(
             user_spec.eval("float(array(42, 42))").unwrap(),
-            to_value(std::f64::NAN)
+            to_value(f64::NAN)
         );
-        assert_eq!(user_spec.eval("float(0..42)").unwrap(), to_value(std::f64::NAN));
-        assert_eq!(user_spec.eval("float(null)").unwrap(), to_value(std::f64::NAN));
+        assert_eq!(user_spec.eval("float(0..42)").unwrap(), to_value(f64::NAN));
+        assert_eq!(user_spec.eval("float(null)").unwrap(), to_value(f64::NAN));
     }
 
     #[test]
