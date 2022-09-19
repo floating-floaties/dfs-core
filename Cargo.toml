@@ -28,7 +28,7 @@ eval-utility = "^0.1"
 inflection-rs = "^0.1"
 
 # web deps
-tokio = { version = "1.20.1", features = ["full"] }
+tokio = { version = "1.21.1", features = ["full"] }
 mini-redis = "0.4.1"
 jsonwebtokens-cognito = "0.1.1"
 oauth2 = "4.2.3"
