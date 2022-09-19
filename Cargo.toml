@@ -22,8 +22,10 @@ tracing-subscriber = "0.3.15"
 
 # internal deps
 resolver = "^0.1"
-eval-utility = { path = "../eval-utility" }
-inflection-rs = { path = "../inflection-rs" }
+#eval-utility = { path = "../eval-utility" }
+#inflection-rs = { path = "../inflection-rs" }
+eval-utility = "^0.1"
+inflection-rs = "^0.1"
 
 # web deps
 tokio = { version = "1.20.1", features = ["full"] }

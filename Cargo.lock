@@ -562,7 +562,7 @@ dependencies = [
  "chrono",
  "chrono-tz",
  "eval-utility",
- "inflection-rs 0.1.1",
+ "inflection-rs",
  "jsonwebtokens-cognito",
  "lazy_static",
  "mini-redis",
@@ -600,11 +600,13 @@ dependencies = [
 
 [[package]]
 name = "eval-utility"
-version = "0.1.3"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0c386fbf87649caff89afb20cfcca3318c32dbff62a3d5f03db2db67d73752d7"
 dependencies = [
  "chrono",
  "chrono-tz",
- "inflection-rs 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "inflection-rs",
  "lazy_static",
  "log",
  "regex",
@@ -899,18 +901,9 @@ dependencies = [
 
 [[package]]
 name = "inflection-rs"
-version = "0.1.1"
-dependencies = [
- "deunicode",
- "hashbrown",
- "regex",
-]
-
-[[package]]
-name = "inflection-rs"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "20e5c16d18fb9b016aad03a3138d4b70234f43f4095d7489f420c3f28bb57ba3"
+checksum = "21816c3f2bbdba2cfd87347303060bc03e9b39d9995fcc3dc5c66f5e2fb34292"
 dependencies = [
  "deunicode",
  "hashbrown",
