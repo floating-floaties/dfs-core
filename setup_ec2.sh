@@ -1,4 +1,3 @@
-
 #!/bin/sh
 
 # Steps to setup ec2 with docker-compose

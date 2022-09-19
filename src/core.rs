@@ -15,19 +15,18 @@ pub mod spec {
     pub mod web {
         use crate::core::spec::Spec;
 
-        #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+        #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
         pub struct ResultType {
-            pub value: String,
-            pub instanceof: String,
+            pub value: resolver::Value,
         }
 
-        #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+        #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
         pub struct ConditionRequest {
             pub spec: Spec,
             pub condition: String,
         }
 
-        #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+        #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
         pub struct ConditionResponse {
             pub message: String,
             pub result: Option<ResultType>,
@@ -35,31 +34,19 @@ pub mod spec {
         }
     }
 
-    macro_rules! result_type {
-        ($value_of:expr, $type_of:expr) => {{
-            let result = $value_of.to_string();
-            let instanceof = $type_of.to_owned();
-
-            Ok(web::ResultType {
-                value: result,
-                instanceof,
-            })
-        }};
-    }
-
-    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
     pub struct Case {
         pub condition: String,
         pub reply: String,
     }
 
-    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
     pub struct Dialog {
         pub intent: String,
         pub cases: Vec<Case>,
     }
 
-    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
     pub struct Spec {
         pub intents: Vec<String>,
         pub context: HashMap<String, String>,
@@ -136,7 +123,7 @@ pub mod spec {
                 .value("ctx", &self.context)
                 .value("sys", &self.system);
 
-            return expr_wrapper(exp, EvalConfig::default());
+            expr_wrapper(exp, EvalConfig::default())
         }
 
         pub fn eval<S: AsRef<str>>(&self, expression: S) -> Result<resolver::Value, String> {
@@ -152,7 +139,7 @@ pub mod spec {
                 return Err(message);
             }
 
-            return Ok(result.unwrap());
+            Ok(result.unwrap())
         }
 
         pub fn format_eval_for_response<S: AsRef<str>>(
@@ -162,42 +149,19 @@ pub mod spec {
             let evaluated_expression = self.eval(expression);
 
             match evaluated_expression {
-                Ok(value) => match value {
-                    resolver::Value::Number(x) => {
-                        let is_f64 = x.is_f64();
-                        let (value, instanceof) = if is_f64 {
-                            (x.as_f64().unwrap().to_string(), "float")
-                        } else {
-                            (x.as_i64().unwrap().to_string(), "integer")
-                        };
-                        result_type!(value, instanceof)
-                    }
-                    resolver::Value::Bool(x) => {
-                        result_type!(x, "boolean")
-                    }
-                    resolver::Value::String(x) => {
-                        result_type!(x, "string")
-                    }
-                    resolver::Value::Array(x) => {
-                        result_type!(serde_json::to_string(&x).unwrap(), "array")
-                    }
-                    resolver::Value::Object(x) => {
-                        result_type!(serde_json::to_string(&x).unwrap(), "object")
-                    }
-                    _ => {
-                        result_type!("null", "null")
-                    }
-                },
+                Ok(value) => Ok(web::ResultType {
+                    value
+                }),
                 Err(message) => Err(message),
             }
         }
 
-        pub fn from_yaml(content: &String) -> Self {
-            serde_yaml::from_str(&content).unwrap()
+        pub fn from_yaml(content: &str) -> Self {
+            serde_yaml::from_str(content).unwrap()
         }
 
-        pub fn from_json(content: &String) -> Self {
-            serde_json::from_str(&content).unwrap()
+        pub fn from_json(content: &str) -> Self {
+            serde_json::from_str(content).unwrap()
         }
 
         pub fn to_yaml(&self) -> String {

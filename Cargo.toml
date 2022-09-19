@@ -22,14 +22,27 @@ tracing-subscriber = "0.3.15"
 
 # internal deps
 resolver = "^0.1"
+#eval-utility = { path = "../eval-utility" }
+#inflection-rs = { path = "../inflection-rs" }
 eval-utility = "^0.1"
 inflection-rs = "^0.1"
 
 # web deps
 tokio = { version = "1.20.1", features = ["full"] }
 mini-redis = "0.4.1"
+jsonwebtokens-cognito = "0.1.1"
+oauth2 = "4.2.3"
+openssl = "0.10.41"
 actix-files = "0.6"
-actix-web = { version = "4.1.0" }
+actix-web = { version = "4.1.0", features = ["openssl"] }
 actix-cors = "0.6.1"
-reqwest = "0.11.11"
+reqwest = { verison="0.11.11", features = ["json"] }
+lazy_static = "1.4.0"
 
+# Enable a small amount of optimization in debug mode
+[profile.dev]
+opt-level = 1
+
+# Enable high optimizations for dependencies, but not for our code:
+[profile.dev.package."*"]
+opt-level = 3
