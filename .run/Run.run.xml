@@ -12,7 +12,7 @@
     <envs>
       <env name="HOST" value="localhost" />
       <env name="PORT" value="3000" />
-      <env name="DOMAIN" value="floatingfloaties.com" />
+      <env name="ENV" value="dev" />
     </envs>
     <option name="isRedirectInput" value="false" />
     <option name="redirectInputPath" value="" />

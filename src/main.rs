@@ -1,47 +1,60 @@
 #![forbid(unsafe_code)]
+use std::sync::Arc;
 
-use actix_cors::Cors;
 use actix_web::{
-    get, http, post, web, App, HttpResponse, HttpServer, Responder
+    get, http, post, web, App,
+    HttpResponse, HttpServer, Responder,
 };
+use actix_cors::Cors;
 
-// use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
 
+#[macro_use]
+mod config;
 mod core;
-use crate::core::spec;
 
-// use crate::core::spec::Spec;
-
+use crate::{
+    core::spec,
+    config::*
+};
 
 #[post("/condition")]
 async fn test_condition(req_body: String) -> web::Json<spec::web::ConditionResponse> {
-    println!("{}", req_body.as_str());
-    let req = serde_json::from_str::<spec::web::ConditionRequest>(req_body.as_str());
+    if let Some(global) = global! () {
+        println!("global={global:?}");
+        println!("req={}", req_body.as_str());
+        let req = serde_json::from_str::<spec::web::ConditionRequest>(req_body.as_str());
 
-    match req {
-        Ok(req) => {
-            let evaluated = req.spec.format_eval_for_response(req.condition);
-            match evaluated {
-                Ok(value) => web::Json(spec::web::ConditionResponse {
-                    message: "Evaluated expression".into(),
-                    result: Some(value),
-                    error: false,
-                }),
-                Err(message) => web::Json(spec::web::ConditionResponse {
+        match req {
+            Ok(req) => {
+                let evaluated = req.spec.format_eval_for_response(req.condition);
+                match evaluated {
+                    Ok(value) => web::Json(spec::web::ConditionResponse {
+                        message: "Evaluated expression".into(),
+                        result: Some(value),
+                        error: false,
+                    }),
+                    Err(message) => web::Json(spec::web::ConditionResponse {
+                        message,
+                        result: None,
+                        error: true,
+                    }),
+                }
+            }
+            Err(error) => {
+                let message = format!("Failed to parse json: {:?}", error.to_string());
+                web::Json(spec::web::ConditionResponse {
                     message,
                     result: None,
                     error: true,
-                }),
+                })
             }
         }
-        Err(error) => {
-            let message = format!("Failed to parse json: {:?}", error.to_string());
-            web::Json(spec::web::ConditionResponse {
-                message,
-                result: None,
-                error: true,
-            })
-        }
+    } else {
+        web::Json(spec::web::ConditionResponse {
+            message: "Failed to lock global resource".into(),
+            result: None,
+            error: true,
+        })
     }
 }
 
@@ -53,12 +66,10 @@ async fn home() -> impl Responder {
 #[get("/version")]
 async fn version() -> impl Responder {
     HttpResponse::Ok()
-
-        .insert_header(("Access-Control-Allow-Origin", "*"))
-    .body(
-        std::fs::read_to_string("build-date.txt")
-        .unwrap_or_else(|_| "unknown".into())
-    )
+        .body(
+            std::fs::read_to_string("build-date.txt")
+                .unwrap_or_else(|_| "unknown".into())
+        )
 }
 
 // #[post("/token")]
@@ -73,50 +84,33 @@ async fn version() -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let host: String = match std::env::var("HOST") {
-        Ok(v) => v,
-        _ => "0.0.0.0".into(),
-    };
-    let port: u16 = match std::env::var("PORT") {
-        Ok(v) => v.parse::<u16>().expect("Invalid PORT number was provided"),
-        _ => 80,
-    };
-
-    let domain: String = match std::env::var("DOMAIN") {
-        Ok(v) => v,
-        _ => "floatingfloaties.com".into(),
-    };
-
-    let urls = [
-        "http://localhost:8080".into(),
-        format!("http://localhost:{port}"),
-        format!("http://{host}:8080"),
-        format!("http://{host}:{port}"),
-        format!("https://{domain}"),
-        format!("https://dev.{domain}"),
-        format!("https://qa.{domain}"),
-        format!("https://release.{domain}"),
-    ];
+    let env = Environment::from_env();
 
     // let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
     // builder.set_private_key_file("key.pem", SslFiletype::PEM).unwrap();
     // builder.set_certificate_chain_file("cert.pem").unwrap();
     // let config = aws_config::load_from_env().await;
 
-    HttpServer::new(|| {
-        let env: String = match std::env::var("ENV") {
-            Ok(v) => v,
-            _ => "development".to_owned(),
-        };
+    HttpServer::new(move || {
+        let environment = Environment::from_env();
 
-        let cors = if env.to_ascii_lowercase() == "development" {
-            Cors::permissive()
-                .allowed_origin("http://0.0.0.0:3000")
-                .allowed_origin("http://0.0.0.0:8080")
-                .allowed_origin("http://localhost:3000")
-                .allowed_origin("http://localhost:8080")
-                .allowed_origin("http://127.0.0.1:3000")
-                .allowed_origin("http://127.0.0.1:8080")
+        let cors = if environment.is_dev() {
+            let protocols = ["https", "http", "ws", "wss"];
+            let domains = ["0.0.0.0", "localhost", "127.0.0.1"];
+            let ports = ["3000", "8080", "8000", "80", "443"];
+            let mut cors = Cors::permissive();
+
+            for protocol in protocols {
+                for domain in domains {
+                    for port in ports {
+                        let origin = format!("{protocol}://{domain}:{port}");
+                        cors = cors.allowed_origin(origin.as_str());
+
+                    }
+                }
+            }
+
+            cors
         } else {
             Cors::default()
                 .allowed_origin("https://floatingfloaties.com")
@@ -126,7 +120,6 @@ async fn main() -> std::io::Result<()> {
         };
 
         let cors = cors
-            .send_wildcard()
             .allowed_methods(vec!["GET", "POST"])
             .allowed_header(http::header::ACCEPT)
             .allowed_header(http::header::AUTHORIZATION)
@@ -137,17 +130,17 @@ async fn main() -> std::io::Result<()> {
             .allowed_header(http::header::ACCEPT_ENCODING)
             .allowed_header(http::header::CONNECTION)
             .max_age(3600);
-        
+
         App::new()
             .wrap(cors)
             .service(home)
             .service(test_condition)
             .service(version)
-            // .service(token)
+        // .service(token)
     })
-    // .bind_openssl(format!("{}:{}", host, port), builder)?
-    .bind((host, port))?
-    .workers(2)
-    .run()
-    .await
+        // .bind_openssl(format!("{}:{}", host, port), builder)?
+        .bind(env.host_port())?
+        .workers(2)
+        .run()
+        .await
 }

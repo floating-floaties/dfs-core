@@ -17,8 +17,7 @@ pub mod spec {
 
         #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
         pub struct ResultType {
-            pub value: String,
-            pub instanceof: String,
+            pub value: resolver::Value,
         }
 
         #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -33,18 +32,6 @@ pub mod spec {
             pub result: Option<ResultType>,
             pub error: bool,
         }
-    }
-
-    macro_rules! result_type {
-        ($value_of:expr, $type_of:expr) => {{
-            let result = $value_of.to_string();
-            let instanceof = $type_of.to_owned();
-
-            Ok(web::ResultType {
-                value: result,
-                instanceof,
-            })
-        }};
     }
 
     #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -162,32 +149,9 @@ pub mod spec {
             let evaluated_expression = self.eval(expression);
 
             match evaluated_expression {
-                Ok(value) => match value {
-                    resolver::Value::Number(x) => {
-                        let is_f64 = x.is_f64();
-                        let (value, instanceof) = if is_f64 {
-                            (x.as_f64().unwrap().to_string(), "float")
-                        } else {
-                            (x.as_i64().unwrap().to_string(), "integer")
-                        };
-                        result_type!(value, instanceof)
-                    }
-                    resolver::Value::Bool(x) => {
-                        result_type!(x, "boolean")
-                    }
-                    resolver::Value::String(x) => {
-                        result_type!(x, "string")
-                    }
-                    resolver::Value::Array(x) => {
-                        result_type!(serde_json::to_string(&x).unwrap(), "array")
-                    }
-                    resolver::Value::Object(x) => {
-                        result_type!(serde_json::to_string(&x).unwrap(), "object")
-                    }
-                    _ => {
-                        result_type!("null", "null")
-                    }
-                },
+                Ok(value) => Ok(web::ResultType {
+                    value
+                }),
                 Err(message) => Err(message),
             }
         }

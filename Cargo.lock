@@ -562,8 +562,9 @@ dependencies = [
  "chrono",
  "chrono-tz",
  "eval-utility",
- "inflection-rs",
+ "inflection-rs 0.1.1",
  "jsonwebtokens-cognito",
+ "lazy_static",
  "mini-redis",
  "oauth2",
  "openssl",
@@ -572,7 +573,7 @@ dependencies = [
  "resolver",
  "serde",
  "serde_json",
- "serde_yaml 0.9.0",
+ "serde_yaml",
  "tokio",
  "tracing",
  "tracing-subscriber 0.3.15",
@@ -599,18 +600,17 @@ dependencies = [
 
 [[package]]
 name = "eval-utility"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "58bdb7eee7b2160d45cb2d2909f3f057debd8c19107edafdb5a885dd1a359e68"
+version = "0.1.3"
 dependencies = [
  "chrono",
  "chrono-tz",
+ "inflection-rs 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lazy_static",
  "log",
  "regex",
  "resolver",
  "serde",
  "serde_json",
- "serde_yaml 0.8.25",
 ]
 
 [[package]]
@@ -900,6 +900,15 @@ dependencies = [
 [[package]]
 name = "inflection-rs"
 version = "0.1.1"
+dependencies = [
+ "deunicode",
+ "hashbrown",
+ "regex",
+]
+
+[[package]]
+name = "inflection-rs"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "20e5c16d18fb9b016aad03a3138d4b70234f43f4095d7489f420c3f28bb57ba3"
 dependencies = [
@@ -991,12 +1000,6 @@ name = "libc"
 version = "0.2.126"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "349d5a591cd28b49e1d1037471617a32ddcda5731b99419008085f72d5a53836"
-
-[[package]]
-name = "linked-hash-map"
-version = "0.5.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0717cef1bc8b636c6e1c1bbdefc09e6322da8a9321966e8928ef80d20f7f770f"
 
 [[package]]
 name = "local-channel"
@@ -1717,18 +1720,6 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
-]
-
-[[package]]
-name = "serde_yaml"
-version = "0.8.25"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ec0091e1f5aa338283ce049bd9dfefd55e1f168ac233e85c1ffe0038fb48cbe"
-dependencies = [
- "indexmap",
- "ryu",
- "serde",
- "yaml-rust",
 ]
 
 [[package]]
@@ -2465,15 +2456,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "80d0f4e272c85def139476380b12f9ac60926689dd2e01d4923222f40580869d"
 dependencies = [
  "winapi",
-]
-
-[[package]]
-name = "yaml-rust"
-version = "0.4.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "56c1936c4cc7a1c9ab21a1ebb602eb942ba868cbd44a99cb7cdc5892335e1c85"
-dependencies = [
- "linked-hash-map",
 ]
 
 [[package]]
