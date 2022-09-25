@@ -8,6 +8,7 @@ sudo apt-get install screen vim htop -y
 # Install build tools
 sudo apt install build-essential manpages-dev -y
 sudo apt install gobjc gfortran gnat -y
+sudo apt install pkg-config libssl-dev librust-openssl-dev librust-openssl-sys-dev -y
 
 # Install Rust
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
