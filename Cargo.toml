@@ -24,9 +24,10 @@ tracing-subscriber = "0.3"
 #resolver = { path = "../resolver" }
 #eval-utility = { path = "../eval-utility" }
 #inflection-rs = { path = "../inflection-rs" }
-resolver = "^0.1"
-eval-utility = "^0.1"
-inflection-rs = "^0.1"
+
+eval-utility = { git = "https://github.com/floating-floaties/eval-utility.git" }
+resolver = { git = "https://github.com/floating-floaties/resolver.git" }
+inflection-rs = { git = "https://github.com/floating-floaties/inflection-rs.git" }
 
 # web deps
 tokio = { version = "1.21", features = ["full"] }
@@ -39,11 +40,3 @@ actix-web = { version = "4.2", features = ["openssl"] }
 actix-cors = "0.6"
 reqwest = { verison = "0.11", features = ["json"] }
 lazy_static = "1.4"
-
-# Enable a small amount of optimization in debug mode
-[profile.dev]
-opt-level = 1
-
-# Enable high optimizations for dependencies, but not for our code:
-[profile.dev.package."*"]
-opt-level = 3
