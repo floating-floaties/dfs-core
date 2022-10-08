@@ -8,9 +8,7 @@ pub mod spec {
 
     use resolver;
     use serde::{Deserialize, Serialize};
-
-    use eval_utility::eval_wrapper::{expr_wrapper, EvalConfig};
-    // use crate::core::utils::utils;
+    use eval_utility::eval_wrapper::{ExprWrapper, EvalConfig};
 
     pub mod web {
         use crate::core::spec::Spec;
@@ -115,31 +113,36 @@ pub mod spec {
 
             let mut system = HashMap::<String, String>::new();
             system.insert("timezone".to_owned(), "US/Eastern".to_owned());
-            Spec::new(intents, dialogs, context, system)
+            Self::new(intents, dialogs, context, system)
         }
 
-        pub fn expr(&self, expression: String) -> resolver::Expr {
-            let exp = resolver::Expr::new(expression)
+        pub fn expr(&self, expression: String) -> ExprWrapper {
+            ExprWrapper::new(expression)
                 .value("ctx", &self.context)
-                .value("sys", &self.system);
-
-            expr_wrapper(exp, EvalConfig::default())
+                .value("sys", &self.system)
+                .config(EvalConfig {
+                    include_maths: true,
+                    include_regex: true,
+                    include_datetime: true,
+                    include_cast: true,
+                })
+                .init()
         }
 
         pub fn eval<S: AsRef<str>>(&self, expression: S) -> Result<resolver::Value, String> {
             let str_like = expression.as_ref().to_owned();
             let result = self.expr(str_like).exec();
-
-            if result.is_err() {
-                let message = format!(
-                    "Failed to parse expression: \"{}\"; {:?}",
-                    expression.as_ref().to_owned(),
-                    result,
-                );
-                return Err(message);
+            match result {
+                Ok(result) => Ok(result),
+                Err(error) => {
+                    let message = format!(
+                        "Failed to parse expression: \"{}\"; {:?}",
+                        expression.as_ref().to_owned(),
+                        error,
+                    );
+                    Err(message)
+                }
             }
-
-            Ok(result.unwrap())
         }
 
         pub fn format_eval_for_response<S: AsRef<str>>(

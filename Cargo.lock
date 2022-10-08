@@ -611,12 +611,12 @@ dependencies = [
 
 [[package]]
 name = "eval-utility"
-version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c386fbf87649caff89afb20cfcca3318c32dbff62a3d5f03db2db67d73752d7"
+version = "0.2.0"
+source = "git+https://github.com/floating-floaties/eval-utility.git#1994927d6f227b0a99cb917640efe1d18f9e1342"
 dependencies = [
  "chrono",
  "chrono-tz",
+ "hashbrown",
  "inflection-rs",
  "lazy_static",
  "log",
@@ -918,8 +918,7 @@ dependencies = [
 [[package]]
 name = "inflection-rs"
 version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21816c3f2bbdba2cfd87347303060bc03e9b39d9995fcc3dc5c66f5e2fb34292"
+source = "git+https://github.com/floating-floaties/inflection-rs.git#b09d784ab9d2eb1a5c7f2d22fb1bd77395477c8b"
 dependencies = [
  "deunicode",
  "hashbrown",
@@ -1569,8 +1568,7 @@ dependencies = [
 [[package]]
 name = "resolver"
 version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c015e5ce5232da58562cfa381cae7b85b00c13183caf2af987b300c31ff8e54"
+source = "git+https://github.com/floating-floaties/resolver.git#19d1ceaa73b36d612b5ff7a8ae814dd85df68d5d"
 dependencies = [
  "quick-error",
  "serde",

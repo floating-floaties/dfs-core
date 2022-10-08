@@ -14,10 +14,10 @@ mod eval {
     #[test]
     fn global_variables() {
         let user_spec = Spec::default();
-        assert_eq!(user_spec.eval("MIN_INT").unwrap(), to_value(i64::MIN));
-        assert_eq!(user_spec.eval("MAX_INT").unwrap(), to_value(i64::MAX));
-        assert_eq!(user_spec.eval("MAX_FLOAT").unwrap(), to_value(f64::MAX));
-        assert_eq!(user_spec.eval("MIN_FLOAT").unwrap(), to_value(f64::MIN));
+        assert_eq!(user_spec.eval("maths.MIN_INT").unwrap(), to_value(i64::MIN));
+        assert_eq!(user_spec.eval("maths.MAX_INT").unwrap(), to_value(i64::MAX));
+        assert_eq!(user_spec.eval("maths.MAX_FLOAT").unwrap(), to_value(f64::MAX));
+        assert_eq!(user_spec.eval("maths.MIN_FLOAT").unwrap(), to_value(f64::MIN));
         assert_eq!(user_spec.eval("NAN").unwrap(), to_value(f64::NAN));
         assert_eq!(user_spec.eval("INFINITY").unwrap(), to_value(f64::INFINITY));
         assert_eq!(
@@ -132,8 +132,8 @@ mod eval {
         let date = Date::now().date();
         let day = date.day();
 
-        assert_eq!(user_spec.eval("day()").unwrap(), day);
-        assert_eq!(user_spec.eval("day('_')").unwrap(), day);
+        assert_eq!(user_spec.eval("get_day()").unwrap(), day);
+        assert_eq!(user_spec.eval("get_day('_')").unwrap(), day);
     }
 
     #[test]
@@ -142,8 +142,8 @@ mod eval {
         let date = Date::now().date();
         let month = date.month();
 
-        assert_eq!(user_spec.eval("month()").unwrap(), month);
-        assert_eq!(user_spec.eval("month('_')").unwrap(), month);
+        assert_eq!(user_spec.eval("get_month()").unwrap(), month);
+        assert_eq!(user_spec.eval("get_month('_')").unwrap(), month);
     }
 
     #[test]
@@ -151,45 +151,45 @@ mod eval {
         let user_spec = Spec::default();
         let date = Date::now().date();
         let year = date.year();
-        assert_eq!(user_spec.eval("year()").unwrap(), year);
-        assert_eq!(user_spec.eval("year('_')").unwrap(), year);
+        assert_eq!(user_spec.eval("get_year()").unwrap(), year);
+        assert_eq!(user_spec.eval("get_year('_')").unwrap(), year);
     }
 
     #[test]
     fn weekday() {
         let user_spec = Spec::default();
         let weekday_num = Date::now().weekday().number_from_monday();
-        assert_eq!(user_spec.eval("weekday('_')").unwrap(), weekday_num);
+        assert_eq!(user_spec.eval("get_weekday('_')").unwrap(), weekday_num);
         assert_eq!(user_spec.eval("is_weekday('_')").unwrap(), weekday_num < 6);
 
-        assert_eq!(user_spec.eval("weekday()").unwrap(), weekday_num);
+        assert_eq!(user_spec.eval("get_weekday()").unwrap(), weekday_num);
         assert_eq!(user_spec.eval("is_weekday()").unwrap(), weekday_num < 6);
     }
 
     #[test]
     fn time() {
         let user_spec = Spec::default();
-        assert_eq!(user_spec.eval("time('_', 'h')").unwrap(), Date::now().time().hour());
-        assert_eq!(user_spec.eval("time('_', 'm')").unwrap(), Date::now().time().minute());
-        assert_eq!(user_spec.eval("time('_', 's')").unwrap(), Date::now().time().second());
+        assert_eq!(user_spec.eval("get_time('_', 'h')").unwrap(), Date::now().time().hour());
+        assert_eq!(user_spec.eval("get_time('_', 'm')").unwrap(), Date::now().time().minute());
+        assert_eq!(user_spec.eval("get_time('_', 's')").unwrap(), Date::now().time().second());
 
-        assert_eq!(user_spec.eval("time('_', 'hour')").unwrap(), Date::now().time().hour());
+        assert_eq!(user_spec.eval("get_time('_', 'hour')").unwrap(), Date::now().time().hour());
         assert_eq!(
-            user_spec.eval("time('_', 'minute')").unwrap(),
+            user_spec.eval("get_time('_', 'minute')").unwrap(),
             Date::now().time().minute()
         );
         assert_eq!(
-            user_spec.eval("time('_', 'second')").unwrap(),
+            user_spec.eval("get_time('_', 'second')").unwrap(),
             Date::now().time().second()
         );
 
-        assert_eq!(user_spec.eval("time('_', 'hours')").unwrap(), Date::now().time().hour());
+        assert_eq!(user_spec.eval("get_time('_', 'hours')").unwrap(), Date::now().time().hour());
         assert_eq!(
-            user_spec.eval("time('_', 'minutes')").unwrap(),
+            user_spec.eval("get_time('_', 'minutes')").unwrap(),
             Date::now().time().minute()
         );
         assert_eq!(
-            user_spec.eval("time('_', 'seconds')").unwrap(),
+            user_spec.eval("get_time('_', 'seconds')").unwrap(),
             Date::now().time().second()
         );
     }
