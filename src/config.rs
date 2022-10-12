@@ -1,8 +1,15 @@
 use std::sync::{Arc, Mutex};
 use lazy_static::lazy_static;
 
+
 #[derive(Eq, PartialEq, Clone, Debug, serde::Deserialize, serde::Serialize)]
-pub struct GlobalConfig {}
+pub struct GlobalConfig {
+    version: String,
+    pub(crate) audit_logger_format: String,
+    pub(crate) service_logger_format: String,
+    pub(crate) time_format: String,
+    error: bool,
+}
 
 impl GlobalConfig {
     async fn new() -> Self {
@@ -15,12 +22,42 @@ impl GlobalConfig {
             "app": app_name,
             "email": email,
         }};
-        let _response = client
+        log::debug!("Fetching config: payload={:?}", payload);
+        let response = client
             .post(env.config_details.url)
             .header("x-api-key", env.config_details.api_key)
             .json(&payload)
-            .send();
-        Self {}
+            .send()
+            .await;
+
+        let config = match response {
+            Ok(res) => {
+                match res.json::<Self>().await {
+                    Ok(config) => Some(config),
+                    Err(parse_error) => {
+                        log::error!("Failed to parse config: {parse_error:?}");
+                        None
+                    }
+                }
+            }
+            Err(response_error) => {
+                log::error!("Failed to get response from config server: {response_error:?}");
+                None
+            }
+        };
+
+        if let Some(config) = config {
+            log::info!("Got config from server!");
+            return config;
+        }
+
+        Self {
+            version: "-1".into(),
+            audit_logger_format: "".to_string(),
+            service_logger_format: "[%(level)]: %(message)".to_string(),
+            time_format: "%d/%m/%Y %H:%M".to_string(),
+            error: true,
+        }
     }
 }
 
@@ -32,11 +69,34 @@ pub struct Global {
 }
 
 impl Global {
-    async fn new() -> Self {
+    pub(crate) async fn new() -> Self {
         Self {
             config: GlobalConfig::new().await,
             env: Environment::from_env(),
         }
+    }
+
+    pub(crate) async fn update_mutex(&self, use_self: bool) -> Option<Self> {
+        let g = Arc::clone(&GLOBAL_MUTEX);
+        let lock = g.lock();
+
+        match lock {
+            Ok(mut obj) => {
+                let new_config = if use_self {
+                    Some(self.clone())
+                } else {
+                    Some(Global::new().await)
+                };
+
+                *obj = new_config.clone();
+                new_config
+            },
+            Err(err) => {
+                println!("ERROR: Failed to acquire global resource lock '{:?}'", err);
+                None
+            }
+        }
+
     }
 }
 
@@ -76,7 +136,6 @@ impl Environment {
 
         let config_url: String = std::env::var("CONFIG_CONCORD_URL")
             .expect("Provide Url for config server; export CONFIG_CONCORD_URL");
-
 
         let config_api_key: String = std::env::var("CONFIG_CONCORD_API_KEY")
             .expect("Provide Api Key for config server; export CONFIG_CONCORD_API_KEY");
@@ -135,7 +194,7 @@ macro_rules! global {
         match lock {
             Ok(obj) => Some(obj.clone()),
             Err(err) => {
-                println!("ERROR: Failed to acquire global resource lock '{:?}'", err);
+                log::error!("ERROR: Failed to acquire global resource lock '{:?}'", err);
                 None
             }
         }

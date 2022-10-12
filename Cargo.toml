@@ -16,10 +16,18 @@ serde_json = "1"
 chrono = "0.4"
 chrono-tz = { version = "0.6", features = ["serde"] }
 regex = "1.6"
+log = { version = "0.4", features = ["std", "serde"] }
+env_logger = "0.9"
+tokio = { version = "1.21", features = ["full"] }
+rand = "0.8"
+clap = { version = "4", features = ["derive"] }
+rayon = "1"
+colored = "2"
+lazy_static = "1.4"
+reqwest = { verison = "0.11", features = ["json"] }
+futures = "0.3"
 
-tracing = "0.1"
-tracing-subscriber = "0.3"
-
+#https://doc.rust-lang.org/book/ch16-02-message-passing.html
 # internal deps
 #resolver = { path = "../resolver" }
 #eval-utility = { path = "../eval-utility" }
@@ -28,15 +36,24 @@ tracing-subscriber = "0.3"
 eval-utility = { git = "https://github.com/floating-floaties/eval-utility.git" }
 resolver = { git = "https://github.com/floating-floaties/resolver.git" }
 inflection-rs = { git = "https://github.com/floating-floaties/inflection-rs.git" }
+string-utility = { git = "https://github.com/floating-floaties/string-utility.git" }
 
 # web deps
-tokio = { version = "1.21", features = ["full"] }
+actix = "0.13"
+actix-web = { version = "4.2", features = ["openssl"] }
+actix-cors = "0.6"
+actix-files = "0.6"
+actix-web-actors = "4.1"
+futures-util = "0.3"
 mini-redis = "0.4"
 jsonwebtokens-cognito = "0.1"
 oauth2 = "4.2"
 openssl = { version = "0.10", features = ["vendored"] }
-actix-files = "0.6"
-actix-web = { version = "4.2", features = ["openssl"] }
-actix-cors = "0.6"
-reqwest = { verison = "0.11", features = ["json"] }
-lazy_static = "1.4"
+
+[dependencies.uuid]
+version = "1.2.1"
+features = [
+    "v4",                # Lets you generate random UUIDs
+    "fast-rng",          # Use a faster (but still sufficiently random) RNG
+    "macro-diagnostics", # Enable better diagnostics for compile-time UUIDs
+]
