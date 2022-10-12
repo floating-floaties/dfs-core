@@ -11,8 +11,13 @@ mod eval {
 
     use crate::core::spec::Spec;
 
+    fn init_logger() {
+        let _ = env_logger::builder().is_test(true).try_init();
+    }
+
     #[test]
     fn global_variables() {
+        init_logger();
         let user_spec = Spec::default();
         assert_eq!(user_spec.eval("maths.MIN_INT").unwrap(), to_value(i64::MIN));
         assert_eq!(user_spec.eval("maths.MAX_INT").unwrap(), to_value(i64::MAX));
@@ -28,6 +33,7 @@ mod eval {
 
     #[test]
     fn literal() {
+        init_logger();
         let user_spec = Spec::default();
 
         assert_eq!(user_spec.eval("42").unwrap(), 42);
@@ -43,6 +49,7 @@ mod eval {
 
     #[test]
     fn str() {
+        init_logger();
         let user_spec = Spec::default();
         let expected_ctx_str = "{\"some_var\":\"42\",\"something\":\"true\"}";
         assert_eq!(user_spec.eval("str(ctx)").unwrap(), expected_ctx_str);
@@ -56,6 +63,7 @@ mod eval {
 
     #[test]
     fn bool() {
+        init_logger();
         let mut user_spec = Spec::default();
 
         assert_eq!(user_spec.eval("bool(ctx)").unwrap(), true);
@@ -88,6 +96,7 @@ mod eval {
 
     #[test]
     fn float() {
+        init_logger();
         let user_spec = Spec::default();
         assert_eq!(user_spec.eval("float(42)").unwrap(), 42.0);
         assert_eq!(user_spec.eval("float(42.42)").unwrap(), 42.42);
@@ -111,6 +120,7 @@ mod eval {
 
     #[test]
     fn int() {
+        init_logger();
         let user_spec = Spec::default();
         assert_eq!(user_spec.eval("int(42)").unwrap(), 42);
         assert_eq!(user_spec.eval("int(42.42)").unwrap(), 42);
@@ -128,6 +138,7 @@ mod eval {
 
     #[test]
     fn day() {
+        init_logger();
         let user_spec = Spec::default();
         let date = Date::now().date();
         let day = date.day();
@@ -138,6 +149,7 @@ mod eval {
 
     #[test]
     fn month() {
+        init_logger();
         let user_spec = Spec::default();
         let date = Date::now().date();
         let month = date.month();
@@ -148,6 +160,7 @@ mod eval {
 
     #[test]
     fn year() {
+        init_logger();
         let user_spec = Spec::default();
         let date = Date::now().date();
         let year = date.year();
@@ -157,6 +170,7 @@ mod eval {
 
     #[test]
     fn weekday() {
+        init_logger();
         let user_spec = Spec::default();
         let weekday_num = Date::now().weekday().number_from_monday();
         assert_eq!(user_spec.eval("get_weekday('_')").unwrap(), weekday_num);
@@ -168,6 +182,7 @@ mod eval {
 
     #[test]
     fn time() {
+        init_logger();
         let user_spec = Spec::default();
         assert_eq!(user_spec.eval("get_time('_', 'h')").unwrap(), Date::now().time().hour());
         assert_eq!(user_spec.eval("get_time('_', 'm')").unwrap(), Date::now().time().minute());

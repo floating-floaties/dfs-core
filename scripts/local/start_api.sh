@@ -6,4 +6,4 @@ pwd
 export HOST=127.0.0.1
 export PORT=3000
 export ENV=dev
-cargo watch -x 'run --bin dfs'
+cargo watch -x 'test && cargo run --bin dfs'
