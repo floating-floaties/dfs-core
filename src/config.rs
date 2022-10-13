@@ -115,6 +115,11 @@ pub struct Environment {
     pub port: u16,
     pub env: String,
     pub config_details: ConfigDetails,
+    pub save_logs: bool,
+}
+
+fn is_true(var: String) -> bool {
+    ["true", "1"].contains(&var.to_lowercase().trim())
 }
 
 
@@ -146,6 +151,11 @@ impl Environment {
         let mut config_app_name: String = std::env::var("CONFIG_CONCORD_APP_NAME")
             .expect("Provide Api Key for config server; export CONFIG_CONCORD_APP_NAME");
 
+        let save_logs: String = std::env::var("SAVE_LOGS")
+            .unwrap_or_else(|_| "false".to_string());
+
+        let save_logs = is_true(save_logs);
+
         let config_env = env.clone();
 
         if !config_app_name.ends_with(config_env.as_str()) {
@@ -165,6 +175,7 @@ impl Environment {
             port,
             env,
             config_details,
+            save_logs,
         }
     }
 
