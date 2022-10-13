@@ -18,7 +18,7 @@ impl GlobalConfig {
         let email = env.config_details.email;
         let client = reqwest::Client::new();
         let payload = serde_json::json! {{
-            "action": "GetItem",
+            "action": "GetConfig",
             "app": app_name,
             "email": email,
         }};

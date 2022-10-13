@@ -12,7 +12,7 @@ use futures_util::future::FutureExt;
 use actix_cors::Cors;
 use actix_web::dev::Payload;
 use actix_web::Error as ActixWebError;
-use actix_web::error::{ErrorBadRequest, ErrorUnauthorized};
+use actix_web::error::{ErrorNotFound, ErrorUnauthorized};
 use actix_web::middleware::Logger;
 use actix_web_actors::ws;
 use env_logger::{Builder};
@@ -114,15 +114,6 @@ async fn version() -> impl Responder {
                 .unwrap_or_else(|_| "unknown".into())
         )
 }
-//
-// async fn update(_: Result<Authorized, ActixWebError>) -> impl Responder {
-//     if let Some(Some(config)) = global!() {
-//         config.update_mutex(false).await;
-//         HttpResponse::Ok()
-//     } else {
-//         HttpResponse::InternalServerError()
-//     }
-// }
 
 #[derive(Debug, serde::Deserialize)]
 struct Thing {
@@ -134,12 +125,22 @@ impl FromRequest for Thing {
     type Future = Ready<Result<Thing, ActixWebError>>;
     // type Config = ();
 
-    fn from_request(req: &HttpRequest, payload: &mut Payload) -> Self::Future {
-        if rand::random() {
-            ok(Thing { name: "thingy".into() })
+    fn from_request(req: &HttpRequest, _payload: &mut Payload) -> Self::Future {
+        if is_authorized(req) {
+            ok(Thing { name: "Allowed".into() })
         } else {
-            err(ErrorBadRequest("no luck"))
+            err(ErrorNotFound("Not Found"))
         }
+    }
+}
+
+fn is_authorized(req: &HttpRequest) -> bool {
+    if let Some(value) = req.headers().get("Authorization") {
+        // actual implementation that checks header here
+        dbg!(value);
+        true
+    } else {
+        false
     }
 }
 
@@ -147,13 +148,13 @@ impl FromRequest for Thing {
 async fn index(supplied_thing: Result<Thing, ActixWebError>) -> String {
     match supplied_thing {
         Ok(thing) => format!("Got thing: {:?}", thing),
-        Err(e) => format!("Error extracting thing: {}", e)
+        Err(e) => format!("Unknown error: {}", e)
     }
 }
 
 // #[post("/token")]
 // async fn token(
-//     body
+//     body,
 // ) -> impl Responder {
 //     HttpResponse::Ok().body(
 //         std::fs::read_to_string("build-date.txt")
@@ -285,34 +286,6 @@ impl LogDetails {
     }
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-struct Authorized;
-
-impl FromRequest for Authorized {
-    type Error = ActixWebError;
-    type Future = Ready<Result<Authorized, ActixWebError>>;
-    // type Config = ();
-
-    fn from_request(req: &HttpRequest, _payload: &mut Payload) -> Self::Future {
-        if is_authorized(req) {
-            ok(Authorized {})
-        } else {
-            err(ErrorUnauthorized("no luck"))
-        }
-    }
-}
-
-fn is_authorized(req: &HttpRequest) -> bool {
-    if let Some(value) = req.headers().get("authorized") {
-        // actual implementation that checks header here
-        println!("\n\n\n\n\n");
-        dbg!(value);
-        true
-    } else {
-        false
-    }
-}
-
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let config = Global::new().await;
@@ -333,7 +306,7 @@ async fn main() -> std::io::Result<()> {
                         .set_stdout();
                     let hr = message.human_readable.clone();
                     let terminal = message.stdout.clone();
-                    if let Ok(dump) = serde_json::to_string(&message) {
+                    if let Ok(_dump) = serde_json::to_string(&message) {
 
                     }
 
