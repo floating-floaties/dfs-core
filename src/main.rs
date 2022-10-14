@@ -2,8 +2,8 @@
 
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicUsize, Ordering};
-
 use std::time::Instant;
+
 use actix::{Actor, Addr};
 use futures::future::{ok, err, Ready};
 use actix_web::{get, http, post, web, App, HttpResponse, HttpServer, Responder, HttpRequest, FromRequest};
@@ -13,15 +13,13 @@ use actix_cors::Cors;
 use actix_web::dev::Payload;
 use actix_web::Error as ActixWebError;
 use actix_web::error::{ErrorNotFound};
-use actix_web::middleware::Logger;
+use actix_web::middleware::Logger as AuditLogger;
 use actix_web_actors::ws;
 use env_logger::{Builder};
-use log::{Level, LevelFilter};
 use oauth2::http::HeaderValue;
 use reqwest::header::{HeaderName};
 use serde_json::Value;
 use uuid::Uuid;
-
 
 #[macro_use]
 mod config;
@@ -116,9 +114,7 @@ async fn version() -> impl Responder {
 }
 
 #[derive(Debug, serde::Deserialize)]
-struct Thing {
-    name: String,
-}
+struct Thing;
 
 impl FromRequest for Thing {
     type Error = ActixWebError;
@@ -126,7 +122,7 @@ impl FromRequest for Thing {
 
     fn from_request(req: &HttpRequest, _payload: &mut Payload) -> Self::Future {
         if is_authorized(req) {
-            ok(Thing { name: "Allowed".into() })
+            ok(Thing {})
         } else {
             err(ErrorNotFound("Not Found"))
         }
@@ -166,8 +162,9 @@ async fn index(supplied_thing: Result<Thing, ActixWebError>) -> String {
 struct LogDetails {
     time_format: String,
     time: String,
+    timestamp: i64,
     local_time: String,
-    level: Level,
+    level: log::Level,
     message: String,
     target: String,
     is_audit: bool,
@@ -264,11 +261,11 @@ impl LogDetails {
                 let key = *k;
                 if key == "%(level)" {
                     let v = match self.level {
-                        Level::Error => { v.red().bold().to_string() }
-                        Level::Warn => { v.yellow().bold().to_string() }
-                        Level::Info => { v.green().bold().to_string() }
-                        Level::Debug => { v.blue().bold().to_string() }
-                        Level::Trace => { v.yellow().italic().to_string() }
+                        log::Level::Error => { v.red().bold().to_string() }
+                        log::Level::Warn => { v.yellow().bold().to_string() }
+                        log::Level::Info => { v.green().bold().to_string() }
+                        log::Level::Debug => { v.blue().bold().to_string() }
+                        log::Level::Trace => { v.yellow().italic().to_string() }
                     };
 
                     result = result.replace(*k, &*v);
@@ -285,7 +282,7 @@ impl LogDetails {
     }
 }
 
-async fn dump_log_messages(config: Global, to_dump: Vec<(String, String)>, is_timeout: bool) -> bool {
+async fn dump_log_messages(config: Global, to_dump: Vec<(i64, String)>, is_timeout: bool) -> bool {
     if to_dump.is_empty() {
         return false;
     }
@@ -351,7 +348,7 @@ async fn main() -> std::io::Result<()> {
     let _log_manager = std::thread::spawn(move || {
         let tx_config_clone = tx_fallback_config.clone();
         let runtime = tokio::runtime::Runtime::new().unwrap();
-        let mut dumps = Vec::<(String, String)>::new();
+        let mut dumps = Vec::<(i64, String)>::new();
         let mut recv_timeout = false;
 
         loop {
@@ -379,7 +376,7 @@ async fn main() -> std::io::Result<()> {
 
                     if cnf.env.save_logs {
                         if let Ok(dump) = serde_json::to_string(&message) {
-                            dumps.push((message.time, dump));
+                            dumps.push((message.timestamp, dump));
                         }
                     }
                 }
@@ -433,6 +430,7 @@ async fn main() -> std::io::Result<()> {
                 time_format: configuration.time_format.to_string(),
                 time: utc_time.format(&*configuration.time_format).to_string(),
                 local_time: local_time.format(&*configuration.time_format).to_string(),
+                timestamp: utc_time.timestamp(),
                 target: target.to_string(),
                 app_name: env.config_details.app_name,
                 message: log_message,
@@ -466,7 +464,7 @@ async fn main() -> std::io::Result<()> {
             // writeln!(buf, "{}", message.display(configuration.service_logger_format));
             Ok(())
         })
-        .filter(None, LevelFilter::Info)
+        .filter(None, log::LevelFilter::Info)
         .init();
 
 
@@ -554,7 +552,7 @@ async fn main() -> std::io::Result<()> {
                 })
             })
 
-            .wrap(Logger::new(&*conf.config.audit_logger_format).log_target("audit"))
+            .wrap(AuditLogger::new(&*conf.config.audit_logger_format).log_target("audit"))
             .wrap(cors)
             .app_data(web::Data::from(app_state.clone()))
             .app_data(web::Data::new(server.clone()))
