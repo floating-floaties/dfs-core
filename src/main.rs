@@ -12,7 +12,7 @@ use futures_util::future::FutureExt;
 use actix_cors::Cors;
 use actix_web::dev::Payload;
 use actix_web::Error as ActixWebError;
-use actix_web::error::{ErrorBadRequest, ErrorUnauthorized};
+use actix_web::error::{ErrorNotFound};
 use actix_web::middleware::Logger;
 use actix_web_actors::ws;
 use env_logger::{Builder};
@@ -114,32 +114,32 @@ async fn version() -> impl Responder {
                 .unwrap_or_else(|_| "unknown".into())
         )
 }
-//
-// async fn update(_: Result<Authorized, ActixWebError>) -> impl Responder {
-//     if let Some(Some(config)) = global!() {
-//         config.update_mutex(false).await;
-//         HttpResponse::Ok()
-//     } else {
-//         HttpResponse::InternalServerError()
-//     }
-// }
 
 #[derive(Debug, serde::Deserialize)]
 struct Thing {
-    name: String
+    name: String,
 }
 
 impl FromRequest for Thing {
     type Error = ActixWebError;
     type Future = Ready<Result<Thing, ActixWebError>>;
-    // type Config = ();
 
-    fn from_request(req: &HttpRequest, payload: &mut Payload) -> Self::Future {
-        if rand::random() {
-            ok(Thing { name: "thingy".into() })
+    fn from_request(req: &HttpRequest, _payload: &mut Payload) -> Self::Future {
+        if is_authorized(req) {
+            ok(Thing { name: "Allowed".into() })
         } else {
-            err(ErrorBadRequest("no luck"))
+            err(ErrorNotFound("Not Found"))
         }
+    }
+}
+
+fn is_authorized(req: &HttpRequest) -> bool {
+    if let Some(value) = req.headers().get("Authorization") {
+        // actual implementation that checks header here
+        dbg!(value);
+        true
+    } else {
+        false
     }
 }
 
@@ -147,13 +147,13 @@ impl FromRequest for Thing {
 async fn index(supplied_thing: Result<Thing, ActixWebError>) -> String {
     match supplied_thing {
         Ok(thing) => format!("Got thing: {:?}", thing),
-        Err(e) => format!("Error extracting thing: {}", e)
+        Err(e) => format!("Unknown error: {}", e)
     }
 }
 
 // #[post("/token")]
 // async fn token(
-//     body
+//     body,
 // ) -> impl Responder {
 //     HttpResponse::Ok().body(
 //         std::fs::read_to_string("build-date.txt")
@@ -264,11 +264,11 @@ impl LogDetails {
                 let key = *k;
                 if key == "%(level)" {
                     let v = match self.level {
-                        Level::Error => {v.red().bold().to_string()}
-                        Level::Warn => {v.yellow().bold().to_string()}
-                        Level::Info => {v.green().bold().to_string()}
-                        Level::Debug => {v.blue().bold().to_string()}
-                        Level::Trace => {v.yellow().italic().to_string()}
+                        Level::Error => { v.red().bold().to_string() }
+                        Level::Warn => { v.yellow().bold().to_string() }
+                        Level::Info => { v.green().bold().to_string() }
+                        Level::Debug => { v.blue().bold().to_string() }
+                        Level::Trace => { v.yellow().italic().to_string() }
                     };
 
                     result = result.replace(*k, &*v);
@@ -285,28 +285,54 @@ impl LogDetails {
     }
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-struct Authorized;
-
-impl FromRequest for Authorized {
-    type Error = ActixWebError;
-    type Future = Ready<Result<Authorized, ActixWebError>>;
-    // type Config = ();
-
-    fn from_request(req: &HttpRequest, _payload: &mut Payload) -> Self::Future {
-        if is_authorized(req) {
-            ok(Authorized {})
-        } else {
-            err(ErrorUnauthorized("no luck"))
-        }
+async fn dump_log_messages(config: Global, to_dump: Vec<(String, String)>, is_timeout: bool) -> bool {
+    if to_dump.is_empty() {
+        return false;
     }
-}
 
-fn is_authorized(req: &HttpRequest) -> bool {
-    if let Some(value) = req.headers().get("authorized") {
-        // actual implementation that checks header here
-        println!("\n\n\n\n\n");
-        dbg!(value);
+    // just in case nothing ever gets cleared
+    if to_dump.len() > 1000 {
+        return true;
+    }
+
+    if is_timeout || to_dump.len() >= 100 {
+        if let Some(global_config) = Some(config.clone()) {
+            let env = global_config.env;
+            let app_name = env.config_details.app_name;
+            let email = env.config_details.email;
+            let client = reqwest::Client::new();
+            let timestamp_events = to_dump
+                .iter()
+                .map(|(t, _v)| t.to_string())
+                .collect::<Vec<String>>();
+            let log_events = to_dump
+                .iter()
+                .map(|(_t, v)| v.to_string())
+                .collect::<Vec<String>>();
+            let payload = serde_json::json! {{
+                                "action": "PutLog",
+                                "app": app_name,
+                                "email": email,
+                                "timestamp_events": timestamp_events,
+                                "log_events": log_events,
+                            }};
+
+            let response = client
+                .post(env.config_details.url)
+                .header("x-api-key", env.config_details.api_key)
+                .json(&payload)
+                .send()
+                .await;
+
+            let _ = match response {
+                Ok(res) => Some(res),
+                Err(response_error) => {
+                    println!("Failed to get response from config server: {response_error:?}");
+                    None
+                }
+            };
+        }
+
         true
     } else {
         false
@@ -320,22 +346,28 @@ async fn main() -> std::io::Result<()> {
 
     let (tx, rx) = std::sync::mpsc::channel::<LogDetails>();
     let tx_mutex = Mutex::new(tx.clone());
+    let tx_fallback_config = config.clone();
 
-    let _log_manager = std::thread::Builder::new()
-        .name("log-manager".into())
-        .spawn(move || {
-            // let one_second = std::time::Duration::from_secs(1);
-            loop {
-                if let Ok(mut message) = rx.recv() {
-                    let message =  message
+    let _log_manager = std::thread::spawn(move || {
+        let tx_config_clone = tx_fallback_config.clone();
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        let mut dumps = Vec::<(String, String)>::new();
+        let mut recv_timeout = false;
+
+        loop {
+            let one_min = std::time::Duration::from_secs(60);
+            let cnf = global!()
+                .unwrap_or_else(|| Some(tx_config_clone.clone()))
+                .unwrap_or_else(|| tx_config_clone.clone());
+
+            match rx.recv_timeout(one_min) {
+                Ok(mut message) => {
+                    let message = message
                         .set_log_ids()
                         .set_human_readable()
                         .set_stdout();
                     let hr = message.human_readable.clone();
                     let terminal = message.stdout.clone();
-                    if let Ok(dump) = serde_json::to_string(&message) {
-
-                    }
 
                     if let Some(terminal) = terminal {
                         println!("{}", terminal);
@@ -344,11 +376,36 @@ async fn main() -> std::io::Result<()> {
                     } else {
                         println!("{:?}", message);
                     }
-                };
-            }
-        })
-        .expect("Failed to spawn helper thread (log_manager)");
 
+                    if cnf.env.save_logs {
+                        if let Ok(dump) = serde_json::to_string(&message) {
+                            dumps.push((message.time, dump));
+                        }
+                    }
+                }
+                Err(_) => {
+                    recv_timeout = true;
+                }
+            }
+
+            if cnf.env.save_logs {
+                let dumps_clone = dumps.clone();
+                let result = runtime.block_on(runtime.spawn(async move {
+                    dump_log_messages(
+                        cnf.clone(),
+                        dumps_clone,
+                        recv_timeout
+                    ).await
+                }));
+
+                if let Ok(clear_values) = result {
+                    if clear_values {
+                        dumps.clear();
+                    }
+                }
+            }
+        }
+    });
     let config_copy = config.clone();
     let mut builder = Builder::from_default_env();
     builder
@@ -486,7 +543,7 @@ async fn main() -> std::io::Result<()> {
                             if let Ok(id) = id {
                                 // println!("{:?}: {:?}", static_value, id);
                                 let key = HeaderName::from_static(static_value);
-                                headers.insert(key,id);
+                                headers.insert(key, id);
                             }
                         }
 

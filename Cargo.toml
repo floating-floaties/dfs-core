@@ -27,20 +27,16 @@ lazy_static = "1.4"
 reqwest = { verison = "0.11", features = ["json"] }
 futures = "0.3"
 
-#https://doc.rust-lang.org/book/ch16-02-message-passing.html
-# internal deps
-#resolver = { path = "../resolver" }
-#eval-utility = { path = "../eval-utility" }
-#inflection-rs = { path = "../inflection-rs" }
-
-eval-utility = { git = "https://github.com/floating-floaties/eval-utility.git" }
+# Internal deps
 resolver = { git = "https://github.com/floating-floaties/resolver.git" }
 inflection-rs = { git = "https://github.com/floating-floaties/inflection-rs.git" }
+eval-utility = { git = "https://github.com/floating-floaties/eval-utility.git" }
 string-utility = { git = "https://github.com/floating-floaties/string-utility.git" }
 
 # web deps
 actix = "0.13"
-actix-web = { version = "4.2", features = ["openssl"] }
+sqlx = { version = "0.6", features = [ "runtime-actix-native-tls" , "postgres" ] }
+actix-web = { version = "4", features = ["openssl"] }
 actix-cors = "0.6"
 actix-files = "0.6"
 actix-web-actors = "4.1"
@@ -53,7 +49,7 @@ openssl = { version = "0.10", features = ["vendored"] }
 [dependencies.uuid]
 version = "1.2.1"
 features = [
-    "v4",                # Lets you generate random UUIDs
-    "fast-rng",          # Use a faster (but still sufficiently random) RNG
-    "macro-diagnostics", # Enable better diagnostics for compile-time UUIDs
+    "v4",
+    "fast-rng",
+    "macro-diagnostics",
 ]
