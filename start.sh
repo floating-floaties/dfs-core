@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Update sources
-#git stash
-#git switch development
-#git pull origin development
+git stash
+git switch development
+git pull origin development
 
 # Update Rust
 #rustup update
