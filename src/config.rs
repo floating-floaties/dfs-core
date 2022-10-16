@@ -26,7 +26,7 @@ impl GlobalConfig {
             "app": app_name,
             "email": email,
         }};
-        log::debug!("Fetching config: payload={:?}", payload);
+        println!("Fetching config: payload={:?}", payload);
         let response = client
             .post(env.config_details.url)
             .header("x-api-key", env.config_details.api_key)
@@ -39,19 +39,19 @@ impl GlobalConfig {
                 match res.json::<Self>().await {
                     Ok(config) => Some(config),
                     Err(parse_error) => {
-                        log::error!("Failed to parse config: {parse_error:?}");
+                        eprintln!("Failed to parse config: {parse_error:?}");
                         None
                     }
                 }
             }
             Err(response_error) => {
-                log::error!("Failed to get response from config server: {response_error:?}");
+                eprintln!("Failed to get response from config server: {response_error:?}");
                 None
             }
         };
 
         if let Some(config) = config {
-            log::info!("Got config from server!");
+            println!("Got config from server!");
             return config;
         }
 
@@ -111,7 +111,7 @@ impl Global {
                 new_config
             },
             Err(err) => {
-                println!("ERROR: Failed to acquire global resource lock '{:?}'", err);
+                eprintln!("ERROR: Failed to acquire global resource lock '{:?}'", err);
                 None
             }
         }
