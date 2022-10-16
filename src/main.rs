@@ -6,7 +6,7 @@ use std::time::Instant;
 
 use actix::{Actor, Addr};
 use futures::future::{ok, err, Ready};
-use actix_web::{get, http, post, web, App, HttpResponse, HttpServer, Responder, HttpRequest, FromRequest};
+use actix_web::{get, http, post, web, App, HttpResponse, HttpServer, Responder, HttpRequest, FromRequest, trace};
 use actix_web::{dev::Service as _};
 use futures_util::future::FutureExt;
 use actix_cors::Cors;
@@ -34,6 +34,41 @@ use crate::chat_app::{server, session};
 
 const TRACE_ID: &str = "x-trace-id";
 const SPAN_ID: &str = "x-span-id";
+
+macro_rules! trace_id_from_req {
+    ($req: expr) => {{
+        let tid = $req
+            .headers()
+            .get(TRACE_ID)
+            .cloned()
+            .map(|value| {
+                match value.to_str() {
+                    Ok(v) => v.to_string(),
+                    Err(_) => "<Failed :: No Context>".to_string(),
+                }
+            })
+            .unwrap_or_else(|| {
+                let uuid = Uuid::new_v4();
+                uuid.to_string()
+            });
+        let sid = $req
+            .headers()
+            .get(SPAN_ID)
+            .cloned()
+            .map(|value| {
+                match value.to_str() {
+                    Ok(v) => v.to_string(),
+                    Err(_) => "<Failed :: No Context>".to_string(),
+                }
+            })
+            .unwrap_or_else(|| {
+                let uuid = Uuid::new_v4();
+                uuid.to_string()
+            });
+
+        (tid, sid)
+    }};
+}
 
 /// Entry point for our websocket route
 async fn chat_route(
@@ -101,7 +136,13 @@ async fn test_condition(req_body: String) -> web::Json<spec::web::ConditionRespo
 
 #[get("/")]
 async fn home() -> impl Responder {
-    HttpResponse::Ok().body("How do you do?")
+
+    let msg = if let Some(Some(g)) = global!() {
+        g.config.message
+    } else {
+        "How do you do?".to_string()
+    };
+    HttpResponse::Ok().body(msg)
 }
 
 #[get("/version")]
@@ -130,13 +171,63 @@ impl FromRequest for Thing {
 }
 
 fn is_authorized(req: &HttpRequest) -> bool {
-    if let Some(value) = req.headers().get("Authorization") {
-        // actual implementation that checks header here
-        dbg!(value);
-        true
-    } else {
-        false
+    let headers = req.headers();
+    if let Some(secret) = headers.get("X-Hub-Signature-256") {
+        let github_event = headers.get("X-GitHub-Event");
+        let github_delivery = headers.get("X-GitHub-Event");
+        let user_agent = headers.get("User-Agent");
+        let (trace_id, span_id) = trace_id_from_req!(req);
+
+        let headers_present = {
+            let opts = vec![
+                &github_event,
+                &github_delivery,
+                &user_agent,
+            ];
+            let count = opts.len();
+            let valid_count = opts
+                .iter()
+                .filter(|x| x.is_some())
+                .count();
+
+            count == valid_count && valid_count > 0 && count > 0
+        };
+
+        let valid = {
+            let matched = match secret.to_str() {
+                Ok(secret) => {
+                    if let Some(Some(g)) = global!() {
+                        log::info!("Comparing secrets; <? trace_id={trace_id:?} span_id={span_id:?} ?>");
+                        g.config.cmp_webhook_secret(secret)
+                    } else {
+                        log::error!("Failed to get global config for reload; <? trace_id={trace_id:?} span_id={span_id:?} ?>");
+                        false
+                    }
+                }
+                Err(_) => false,
+            };
+
+            let valid_user_agent = match user_agent {
+                None => false,
+                Some(user_agent) => {
+                    user_agent.to_str().unwrap_or("invalid")
+                        .starts_with("GitHub-Hookshot/")
+                }
+            };
+
+            matched && headers_present && valid_user_agent
+        };
+
+        if valid {
+            log::warn!("Reload Attempt: req={req:?}; <? trace_id={trace_id:?} span_id={span_id:?} ?>");
+
+            std::process::Command::new("sh start.sh")
+                .spawn()
+                .expect("sh command failed to start");
+        }
     }
+
+    false
 }
 
 /// extract `Thing` from request
@@ -307,12 +398,12 @@ async fn dump_log_messages(config: Global, to_dump: Vec<(i64, String)>, is_timeo
                 .map(|(_t, v)| v.to_string())
                 .collect::<Vec<String>>();
             let payload = serde_json::json! {{
-                                "action": "PutLog",
-                                "app": app_name,
-                                "email": email,
-                                "timestamp_events": timestamp_events,
-                                "log_events": log_events,
-                            }};
+                "action": "PutLog",
+                "app": app_name,
+                "email": email,
+                "timestamp_events": timestamp_events,
+                "log_events": log_events,
+            }};
 
             let response = client
                 .post(env.config_details.url)
@@ -391,7 +482,7 @@ async fn main() -> std::io::Result<()> {
                     dump_log_messages(
                         cnf.clone(),
                         dumps_clone,
-                        recv_timeout
+                        recv_timeout,
                     ).await
                 }));
 
@@ -460,8 +551,6 @@ async fn main() -> std::io::Result<()> {
                 }
             };
 
-
-            // writeln!(buf, "{}", message.display(configuration.service_logger_format));
             Ok(())
         })
         .filter(None, log::LevelFilter::Info)
@@ -469,7 +558,6 @@ async fn main() -> std::io::Result<()> {
 
 
     log::info!("Stating application: {:?}", config.env.host_port());
-    log::debug!("Global configuration: {:?}", global!());
 
     let app_state = Arc::new(AtomicUsize::new(0));
     let server = server::ChatServer::new(app_state.clone()).start();

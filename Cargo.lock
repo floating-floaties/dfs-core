@@ -779,7 +779,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "sqlx",
- "string-utility",
+ "string-utility 0.2.1",
  "tokio",
  "uuid",
 ]
@@ -867,7 +867,7 @@ dependencies = [
  "resolver",
  "serde",
  "serde_json",
- "string-utility",
+ "string-utility 0.2.1",
 ]
 
 [[package]]
@@ -1268,11 +1268,12 @@ dependencies = [
 [[package]]
 name = "inflection-rs"
 version = "0.1.2"
-source = "git+https://github.com/floating-floaties/inflection-rs.git#b09d784ab9d2eb1a5c7f2d22fb1bd77395477c8b"
+source = "git+https://github.com/floating-floaties/inflection-rs.git#bd77f155f5d9b7a5e2ed952c89cb6d960b59dfd5"
 dependencies = [
  "deunicode",
  "hashbrown",
  "regex",
+ "string-utility 0.2.0",
 ]
 
 [[package]]
@@ -2396,6 +2397,12 @@ dependencies = [
  "tokio",
  "tokio-native-tls",
 ]
+
+[[package]]
+name = "string-utility"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "127397ed115cc7798e80f04cce1000b0409399a6d2a136eeaa9e1730d23fbace"
 
 [[package]]
 name = "string-utility"

@@ -2,12 +2,16 @@ use std::sync::{Arc, Mutex};
 use lazy_static::lazy_static;
 
 
-#[derive(Eq, PartialEq, Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize)]
 pub struct GlobalConfig {
     version: String,
     pub(crate) audit_logger_format: String,
     pub(crate) service_logger_format: String,
     pub(crate) time_format: String,
+    pub(crate) message: String,
+    reload_events: Vec<String>,
+    github_secret: String,
+    concord_secret: String,
     error: bool,
 }
 
@@ -53,16 +57,31 @@ impl GlobalConfig {
 
         Self {
             version: "-1".into(),
-            audit_logger_format: "".to_string(),
-            service_logger_format: "[%(level)]: %(message)".to_string(),
-            time_format: "%d/%m/%Y %H:%M".to_string(),
+            audit_logger_format: "".into(),
+            service_logger_format: "[%(level)]: %(message)".into(),
+            time_format: "%d/%m/%Y %H:%M".into(),
+            reload_events: vec![],
+            github_secret: "invalid".into(),
+            concord_secret: "invalid".into(),
+            message: "[FAIL] How do you do?".into(),
             error: true,
         }
+    }
+
+    pub fn cmp_webhook_secret<S: AsRef<str>>(&self, other: S) -> bool {
+        let mut map = std::collections::HashSet::with_capacity(5);
+        map.insert(self.github_secret.clone());
+        map.insert(self.concord_secret.clone());
+        map.contains(other.as_ref())
+    }
+
+    pub fn is_expected_reload_event<S: AsRef<str>>(&self, ev: S) -> bool {
+        self.reload_events.contains(&ev.as_ref().to_string())
     }
 }
 
 
-#[derive(Eq, PartialEq, Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize)]
 pub struct Global {
     pub env: Environment,
     pub config: GlobalConfig,
@@ -100,7 +119,7 @@ impl Global {
     }
 }
 
-#[derive(Eq, PartialEq, Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize)]
 pub struct ConfigDetails {
     pub url: String,
     pub api_key: String,
@@ -109,7 +128,7 @@ pub struct ConfigDetails {
     pub email: String,
 }
 
-#[derive(Eq, PartialEq, Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize)]
 pub struct Environment {
     pub host: String,
     pub port: u16,
@@ -192,8 +211,10 @@ impl Environment {
 /// use std::sync::Arc;
 /// use crate::config::*;
 ///
-/// if let Some(global) = global! () {
+/// if let Some(Some(g)) = global!() {
 ///     // use global config
+///     let config = g.config;
+///     let env = g.env;
 /// } else {
 ///     // failed to get global config
 /// }
