@@ -2398,8 +2398,8 @@ dependencies = [
 
 [[package]]
 name = "string-utility"
-version = "0.1.0"
-source = "git+https://github.com/floating-floaties/string-utility.git#818f7bacc049d1bdb6324ff45f441a98891a9545"
+version = "0.2.1"
+source = "git+https://github.com/floating-floaties/string-utility.git#e0f2e1624d8147df388b3635b8f2c0437b25ccb4"
 
 [[package]]
 name = "stringprep"
