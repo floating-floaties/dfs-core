@@ -97,6 +97,7 @@ impl Global {
 
     pub(crate) async fn update_mutex(&self, use_self: bool) -> Option<Self> {
         let g = Arc::clone(&GLOBAL_MUTEX);
+        // let handle = tokio::spawn(async {});
         let lock = g.lock();
 
         match lock {
@@ -115,7 +116,6 @@ impl Global {
                 None
             }
         }
-
     }
 }
 

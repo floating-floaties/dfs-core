@@ -17,11 +17,11 @@ serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"
 serde_json = "1"
 chrono = "0.4"
-chrono-tz = { version = "0.6", features = ["serde"] }
+chrono-tz = { version = "0.7", features = ["serde"] }
 regex = "1.6"
 log = { version = "0.4", features = ["std", "serde"] }
 env_logger = "0.9"
-tokio = { version = "1.21", features = ["full"] }
+tokio = { version = "1", features = ["full"] }
 rand = "0.8"
 clap = { version = "4", features = ["derive"] }
 rayon = "1"
@@ -29,6 +29,31 @@ colored = "2"
 lazy_static = "1.4"
 reqwest = { verison = "0.11", features = ["json"] }
 futures = "0.3"
+
+# Database
+surrealdb = "1.0.0-beta.8"
+
+# ML
+rust-bert = "0.19"
+
+ndarray = { version = "0.15", features = ["rayon", "approx"]}
+ndarray-linalg = { version = "0.16.0", optional = true }
+ndarray-rand = "0.14"
+ndarray-stats = "0.5"
+ndarray-csv = "=0.5.1"
+ndarray-npy = { version = "0.8", default-features = false }
+num-traits = "0.2"
+rand_xoshiro = "0.6"
+flate2 = "1"
+csv = "1"
+
+linfa = { verison = "0.6.0", features = ["serde_crate"] }
+linfa-clustering = { verison = "0.6.0", features = ["serde_crate"] }
+linfa-kernel = { verison = "0.6.0", features = ["serde_crate"] }
+linfa-nn = { version = "0.6.0", features = ["serde_crate"] }
+linfa-svm = { version = "0.6.0", features = ["serde_crate"] }
+linfa-datasets = { version = "0.6.0", features = ["winequality", "iris", "diabetes", "linnerud", "generate"] }
+linfa-linalg = { version = "0.1", default-features = false }
 
 # Internal deps
 resolver = { git = "https://github.com/floating-floaties/resolver.git" }

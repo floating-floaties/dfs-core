@@ -1,4 +1,4 @@
-#![forbid(unsafe_code)]
+// #![forbid(unsafe_code)]
 
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -21,10 +21,14 @@ use reqwest::header::{HeaderName};
 use serde_json::Value;
 use uuid::Uuid;
 
+use rayon::prelude::*;
+use rust_bert::pipelines::question_answering::QaInput;
+
 #[macro_use]
 mod config;
 mod core;
 mod chat_app;
+mod ml;
 
 use crate::{
     core::spec,
@@ -95,9 +99,33 @@ async fn get_count(count: web::Data<AtomicUsize>) -> impl Responder {
     format!("Visitors: {current_count}")
 }
 
+// #[post("/qa")]
+async fn test_qa(req_body: String) -> web::Json<Value> {
+    let req = serde_json::from_str::<Vec<QaInput>>(req_body.as_str());
+
+    match req {
+        Ok(req) => {
+            let answers = ml::bert::ul::qa(&req);
+            web::Json(serde_json::json! {{
+                "message": "Evaluated QAs".to_string(),
+                "result": Some(answers),
+                "error": false,
+            }})
+        }
+        Err(error) => {
+            let message = format!("Failed to parse request: {:?}", error.to_string());
+            web::Json(serde_json::json! {{
+                "message": message,
+                "result": null,
+                "error": true,
+            }})
+        }
+    }
+}
+
 #[post("/condition")]
 async fn test_condition(req_body: String) -> web::Json<spec::web::ConditionResponse> {
-    if let Some(_global) = global!() {
+    // if let Some(_global) = global!() {
         let req = serde_json::from_str::<spec::web::ConditionRequest>(req_body.as_str());
 
         match req {
@@ -125,18 +153,17 @@ async fn test_condition(req_body: String) -> web::Json<spec::web::ConditionRespo
                 })
             }
         }
-    } else {
-        web::Json(spec::web::ConditionResponse {
-            message: "Failed to lock global resource".into(),
-            result: None,
-            error: true,
-        })
-    }
+    // } else {
+    //     web::Json(spec::web::ConditionResponse {
+    //         message: "Failed to lock global resource".into(),
+    //         result: None,
+    //         error: true,
+    //     })
+    // }
 }
 
 #[get("/")]
 async fn home() -> impl Responder {
-
     let msg = if let Some(Some(g)) = global!() {
         g.config.message
     } else {
@@ -436,13 +463,12 @@ async fn main() -> std::io::Result<()> {
     let tx_mutex = Mutex::new(tx.clone());
     let tx_fallback_config = config.clone();
 
-    let _log_manager = std::thread::spawn(move || {
+    let _log_manager = tokio::spawn(async move {
         let tx_config_clone = tx_fallback_config.clone();
-        let runtime = tokio::runtime::Runtime::new().unwrap();
         let mut dumps = Vec::<(i64, String)>::new();
-        let mut recv_timeout = false;
 
         loop {
+            let mut recv_timeout = false;
             let one_min = std::time::Duration::from_secs(60);
             let cnf = global!()
                 .unwrap_or_else(|| Some(tx_config_clone.clone()))
@@ -454,8 +480,10 @@ async fn main() -> std::io::Result<()> {
                         .set_log_ids()
                         .set_human_readable()
                         .set_stdout();
-                    let hr = message.human_readable.clone();
-                    let terminal = message.stdout.clone();
+
+                    let r_message = std::rc::Rc::new(&message);
+                    let hr = &r_message.human_readable;
+                    let terminal = &r_message.stdout;
 
                     if let Some(terminal) = terminal {
                         println!("{}", terminal);
@@ -478,18 +506,14 @@ async fn main() -> std::io::Result<()> {
 
             if cnf.env.save_logs {
                 let dumps_clone = dumps.clone();
-                let result = runtime.block_on(runtime.spawn(async move {
-                    dump_log_messages(
-                        cnf.clone(),
-                        dumps_clone,
-                        recv_timeout,
-                    ).await
-                }));
+                let result = dump_log_messages(
+                    cnf.clone(),
+                    dumps_clone,
+                    recv_timeout,
+                ).await;
 
-                if let Ok(clear_values) = result {
-                    if clear_values {
-                        dumps.clear();
-                    }
+                if result {
+                    dumps.clear();
                 }
             }
         }
@@ -648,11 +672,12 @@ async fn main() -> std::io::Result<()> {
             .route("/count", web::get().to(get_count))
             .route("/ws", web::get().to(chat_route))
             .route("/update", web::post().to(index))
+            .route("/qa", web::post().to(test_qa))
             .service(test_condition)
             .service(version)
     })
         .bind(config.env.host_port())?
-        .workers(2)
+        .workers(5)
         .run()
         .await
 }
