@@ -6,10 +6,10 @@ git switch development
 git pull origin development
 
 # Update Rust
-rustup update
+#rustup update
 
 # Build new changes
-cargo build --release
+# cargo build --release
 date > build-date.txt
 
 # Quit screen if any
@@ -19,4 +19,12 @@ fi
 
 # Start server on screen
 screen -dmS dfs-core
-screen -S dfs-core -X stuff 'cargo run --release\n'
+screen -S dfs-core -X stuff "export CONFIG_CONCORD_URL=\"$CONFIG_CONCORD_URL\" \
+                             && export CONFIG_CONCORD_API_KEY=\"$CONFIG_CONCORD_API_KEY\" \
+                             && export CONFIG_CONCORD_APP_NAME=\"$CONFIG_CONCORD_APP_NAME\" \
+                             && export CONFIG_CONCORD_EMAIL=\"$CONFIG_CONCORD_EMAIL\" \
+                             && export HOST=\"0.0.0.0\" \
+                             && export PORT=\"80\" \
+                             && export ENV=\"production\" \
+                             && export SAVE_LOGS=\"true\" \
+                             && ./bin/x86_64-unknown-linux-gnu/dfs\n"

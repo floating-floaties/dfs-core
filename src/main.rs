@@ -2,8 +2,8 @@
 
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicUsize, Ordering};
-
 use std::time::Instant;
+
 use actix::{Actor, Addr};
 use futures::future::{ok, err, Ready};
 use actix_web::{get, http, post, web, App, HttpResponse, HttpServer, Responder, HttpRequest, FromRequest};
@@ -13,20 +13,20 @@ use actix_cors::Cors;
 use actix_web::dev::Payload;
 use actix_web::Error as ActixWebError;
 use actix_web::error::{ErrorNotFound};
-use actix_web::middleware::Logger;
+use actix_web::middleware::Logger as AuditLogger;
 use actix_web_actors::ws;
 use env_logger::{Builder};
-use log::{Level, LevelFilter};
 use oauth2::http::HeaderValue;
 use reqwest::header::{HeaderName};
 use serde_json::Value;
 use uuid::Uuid;
-
+use dfs_ml::bert::prelude::*;
 
 #[macro_use]
 mod config;
 mod core;
 mod chat_app;
+mod ml;
 
 use crate::{
     core::spec,
@@ -36,6 +36,41 @@ use crate::chat_app::{server, session};
 
 const TRACE_ID: &str = "x-trace-id";
 const SPAN_ID: &str = "x-span-id";
+
+macro_rules! trace_id_from_req {
+    ($req: expr) => {{
+        let tid = $req
+            .headers()
+            .get(TRACE_ID)
+            .cloned()
+            .map(|value| {
+                match value.to_str() {
+                    Ok(v) => v.to_string(),
+                    Err(_) => "<Failed :: No Context>".to_string(),
+                }
+            })
+            .unwrap_or_else(|| {
+                let uuid = Uuid::new_v4();
+                uuid.to_string()
+            });
+        let sid = $req
+            .headers()
+            .get(SPAN_ID)
+            .cloned()
+            .map(|value| {
+                match value.to_str() {
+                    Ok(v) => v.to_string(),
+                    Err(_) => "<Failed :: No Context>".to_string(),
+                }
+            })
+            .unwrap_or_else(|| {
+                let uuid = Uuid::new_v4();
+                uuid.to_string()
+            });
+
+        (tid, sid)
+    }};
+}
 
 /// Entry point for our websocket route
 async fn chat_route(
@@ -62,9 +97,33 @@ async fn get_count(count: web::Data<AtomicUsize>) -> impl Responder {
     format!("Visitors: {current_count}")
 }
 
+// #[post("/qa")]
+async fn test_qa(req_body: String) -> web::Json<Value> {
+    let req = serde_json::from_str::<Vec<QaInput>>(req_body.as_str());
+
+    match req {
+        Ok(req) => {
+            let answers = dfs_ml::bert::ul::qa(&req);
+            web::Json(serde_json::json! {{
+                "message": "Evaluated QAs".to_string(),
+                "result": Some(answers),
+                "error": false,
+            }})
+        }
+        Err(error) => {
+            let message = format!("Failed to parse request: {:?}", error.to_string());
+            web::Json(serde_json::json! {{
+                "message": message,
+                "result": null,
+                "error": true,
+            }})
+        }
+    }
+}
+
 #[post("/condition")]
 async fn test_condition(req_body: String) -> web::Json<spec::web::ConditionResponse> {
-    if let Some(_global) = global!() {
+    // if let Some(_global) = global!() {
         let req = serde_json::from_str::<spec::web::ConditionRequest>(req_body.as_str());
 
         match req {
@@ -92,18 +151,23 @@ async fn test_condition(req_body: String) -> web::Json<spec::web::ConditionRespo
                 })
             }
         }
-    } else {
-        web::Json(spec::web::ConditionResponse {
-            message: "Failed to lock global resource".into(),
-            result: None,
-            error: true,
-        })
-    }
+    // } else {
+    //     web::Json(spec::web::ConditionResponse {
+    //         message: "Failed to lock global resource".into(),
+    //         result: None,
+    //         error: true,
+    //     })
+    // }
 }
 
 #[get("/")]
 async fn home() -> impl Responder {
-    HttpResponse::Ok().body("How do you do?")
+    let msg = if let Some(Some(g)) = global!() {
+        g.config.message
+    } else {
+        "How do you do?".to_string()
+    };
+    HttpResponse::Ok().body(msg)
 }
 
 #[get("/version")]
@@ -115,10 +179,22 @@ async fn version() -> impl Responder {
         )
 }
 
-#[derive(Debug, serde::Deserialize)]
-struct Thing {
-    name: String,
+#[post("/version")]
+async fn version_post() -> impl Responder {
+    let build_date = std::fs::read_to_string("build-date.txt")
+        .unwrap_or_else(|_| "unknown".into());
+
+    let build_date = serde_json::json!({
+        "version": build_date,
+    });
+    let build_date = serde_json::to_string(&build_date);
+    HttpResponse::Ok()
+        .content_type("application/json")
+        .body(build_date.unwrap_or_default())
 }
+
+#[derive(Debug, serde::Deserialize)]
+struct Thing;
 
 impl FromRequest for Thing {
     type Error = ActixWebError;
@@ -126,7 +202,7 @@ impl FromRequest for Thing {
 
     fn from_request(req: &HttpRequest, _payload: &mut Payload) -> Self::Future {
         if is_authorized(req) {
-            ok(Thing { name: "Allowed".into() })
+            ok(Thing {})
         } else {
             err(ErrorNotFound("Not Found"))
         }
@@ -134,13 +210,63 @@ impl FromRequest for Thing {
 }
 
 fn is_authorized(req: &HttpRequest) -> bool {
-    if let Some(value) = req.headers().get("Authorization") {
-        // actual implementation that checks header here
-        dbg!(value);
-        true
-    } else {
-        false
+    let headers = req.headers();
+    if let Some(secret) = headers.get("X-Hub-Signature-256") {
+        let github_event = headers.get("X-GitHub-Event");
+        let github_delivery = headers.get("X-GitHub-Event");
+        let user_agent = headers.get("User-Agent");
+        let (trace_id, span_id) = trace_id_from_req!(req);
+
+        let headers_present = {
+            let opts = vec![
+                &github_event,
+                &github_delivery,
+                &user_agent,
+            ];
+            let count = opts.len();
+            let valid_count = opts
+                .iter()
+                .filter(|x| x.is_some())
+                .count();
+
+            count == valid_count && valid_count > 0 && count > 0
+        };
+
+        let valid = {
+            let matched = match secret.to_str() {
+                Ok(secret) => {
+                    if let Some(Some(g)) = global!() {
+                        log::info!("Comparing secrets; <? trace_id={trace_id:?} span_id={span_id:?} ?>");
+                        g.config.cmp_webhook_secret(secret)
+                    } else {
+                        log::error!("Failed to get global config for reload; <? trace_id={trace_id:?} span_id={span_id:?} ?>");
+                        false
+                    }
+                }
+                Err(_) => false,
+            };
+
+            let valid_user_agent = match user_agent {
+                None => false,
+                Some(user_agent) => {
+                    user_agent.to_str().unwrap_or("invalid")
+                        .starts_with("GitHub-Hookshot/")
+                }
+            };
+
+            matched && headers_present && valid_user_agent
+        };
+
+        if valid {
+            log::warn!("Reload Attempt: req={req:?}; <? trace_id={trace_id:?} span_id={span_id:?} ?>");
+
+            std::process::Command::new("sh start.sh")
+                .spawn()
+                .expect("sh command failed to start");
+        }
     }
+
+    false
 }
 
 /// extract `Thing` from request
@@ -166,8 +292,9 @@ async fn index(supplied_thing: Result<Thing, ActixWebError>) -> String {
 struct LogDetails {
     time_format: String,
     time: String,
+    timestamp: i64,
     local_time: String,
-    level: Level,
+    level: log::Level,
     message: String,
     target: String,
     is_audit: bool,
@@ -220,7 +347,7 @@ impl LogDetails {
 
     fn set_log_ids(&mut self) -> Self {
         if self.is_audit {
-            if let Ok(value) = serde_json::from_str::<Value>(&*self.message) {
+            if let Ok(value) = serde_json::from_str::<Value>(&self.message) {
                 if let Some(obj) = value.as_object() {
                     if let Some(id) = obj.get("spanId") {
                         if let Some(id) = id.as_str() {
@@ -264,17 +391,17 @@ impl LogDetails {
                 let key = *k;
                 if key == "%(level)" {
                     let v = match self.level {
-                        Level::Error => { v.red().bold().to_string() }
-                        Level::Warn => { v.yellow().bold().to_string() }
-                        Level::Info => { v.green().bold().to_string() }
-                        Level::Debug => { v.blue().bold().to_string() }
-                        Level::Trace => { v.yellow().italic().to_string() }
+                        log::Level::Error => { v.red().bold().to_string() }
+                        log::Level::Warn => { v.yellow().bold().to_string() }
+                        log::Level::Info => { v.green().bold().to_string() }
+                        log::Level::Debug => { v.blue().bold().to_string() }
+                        log::Level::Trace => { v.yellow().italic().to_string() }
                     };
 
-                    result = result.replace(*k, &*v);
+                    result = result.replace(*k, &v);
                 } else if key == "%(message)" {
                     let v = v.bright_blue().to_string();
-                    result = result.replace(*k, &*v);
+                    result = result.replace(*k, &v);
                 } else {
                     result = result.replace(*k, v);
                 }
@@ -285,7 +412,7 @@ impl LogDetails {
     }
 }
 
-async fn dump_log_messages(config: Global, to_dump: Vec<(String, String)>, is_timeout: bool) -> bool {
+async fn dump_log_messages(config: Global, to_dump: Vec<(i64, String)>, is_timeout: bool) -> bool {
     if to_dump.is_empty() {
         return false;
     }
@@ -310,12 +437,12 @@ async fn dump_log_messages(config: Global, to_dump: Vec<(String, String)>, is_ti
                 .map(|(_t, v)| v.to_string())
                 .collect::<Vec<String>>();
             let payload = serde_json::json! {{
-                                "action": "PutLog",
-                                "app": app_name,
-                                "email": email,
-                                "timestamp_events": timestamp_events,
-                                "log_events": log_events,
-                            }};
+                "action": "PutLog",
+                "app": app_name,
+                "email": email,
+                "timestamp_events": timestamp_events,
+                "log_events": log_events,
+            }};
 
             let response = client
                 .post(env.config_details.url)
@@ -348,13 +475,12 @@ async fn main() -> std::io::Result<()> {
     let tx_mutex = Mutex::new(tx.clone());
     let tx_fallback_config = config.clone();
 
-    let _log_manager = std::thread::spawn(move || {
+    let _log_manager = tokio::spawn(async move {
         let tx_config_clone = tx_fallback_config.clone();
-        let runtime = tokio::runtime::Runtime::new().unwrap();
-        let mut dumps = Vec::<(String, String)>::new();
-        let mut recv_timeout = false;
+        let mut dumps = Vec::<(i64, String)>::new();
 
         loop {
+            let mut recv_timeout = false;
             let one_min = std::time::Duration::from_secs(60);
             let cnf = global!()
                 .unwrap_or_else(|| Some(tx_config_clone.clone()))
@@ -366,8 +492,10 @@ async fn main() -> std::io::Result<()> {
                         .set_log_ids()
                         .set_human_readable()
                         .set_stdout();
-                    let hr = message.human_readable.clone();
-                    let terminal = message.stdout.clone();
+
+                    let r_message = std::rc::Rc::new(&message);
+                    let hr = &r_message.human_readable;
+                    let terminal = &r_message.stdout;
 
                     if let Some(terminal) = terminal {
                         println!("{}", terminal);
@@ -379,7 +507,7 @@ async fn main() -> std::io::Result<()> {
 
                     if cnf.env.save_logs {
                         if let Ok(dump) = serde_json::to_string(&message) {
-                            dumps.push((message.time, dump));
+                            dumps.push((message.timestamp, dump));
                         }
                     }
                 }
@@ -390,18 +518,14 @@ async fn main() -> std::io::Result<()> {
 
             if cnf.env.save_logs {
                 let dumps_clone = dumps.clone();
-                let result = runtime.block_on(runtime.spawn(async move {
-                    dump_log_messages(
-                        cnf.clone(),
-                        dumps_clone,
-                        recv_timeout
-                    ).await
-                }));
+                let result = dump_log_messages(
+                    cnf.clone(),
+                    dumps_clone,
+                    recv_timeout,
+                ).await;
 
-                if let Ok(clear_values) = result {
-                    if clear_values {
-                        dumps.clear();
-                    }
+                if result {
+                    dumps.clear();
                 }
             }
         }
@@ -431,8 +555,9 @@ async fn main() -> std::io::Result<()> {
             let (pid, tid, thread_name) = LogDetails::process_information();
             let message = LogDetails {
                 time_format: configuration.time_format.to_string(),
-                time: utc_time.format(&*configuration.time_format).to_string(),
-                local_time: local_time.format(&*configuration.time_format).to_string(),
+                time: utc_time.format(&configuration.time_format).to_string(),
+                local_time: local_time.format(&configuration.time_format).to_string(),
+                timestamp: utc_time.timestamp(),
                 target: target.to_string(),
                 app_name: env.config_details.app_name,
                 message: log_message,
@@ -462,16 +587,13 @@ async fn main() -> std::io::Result<()> {
                 }
             };
 
-
-            // writeln!(buf, "{}", message.display(configuration.service_logger_format));
             Ok(())
         })
-        .filter(None, LevelFilter::Info)
+        .filter(None, log::LevelFilter::Info)
         .init();
 
 
     log::info!("Stating application: {:?}", config.env.host_port());
-    log::debug!("Global configuration: {:?}", global!());
 
     let app_state = Arc::new(AtomicUsize::new(0));
     let server = server::ChatServer::new(app_state.clone()).start();
@@ -554,7 +676,7 @@ async fn main() -> std::io::Result<()> {
                 })
             })
 
-            .wrap(Logger::new(&*conf.config.audit_logger_format).log_target("audit"))
+            .wrap(AuditLogger::new(&conf.config.audit_logger_format).log_target("audit"))
             .wrap(cors)
             .app_data(web::Data::from(app_state.clone()))
             .app_data(web::Data::new(server.clone()))
@@ -562,11 +684,13 @@ async fn main() -> std::io::Result<()> {
             .route("/count", web::get().to(get_count))
             .route("/ws", web::get().to(chat_route))
             .route("/update", web::post().to(index))
+            .route("/qa", web::post().to(test_qa))
             .service(test_condition)
             .service(version)
+            .service(version_post)
     })
         .bind(config.env.host_port())?
-        .workers(2)
+        .workers(5)
         .run()
         .await
 }

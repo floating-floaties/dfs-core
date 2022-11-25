@@ -9,16 +9,19 @@ publish = false
 name = "dfs"
 path = "src/main.rs"
 
+[target.aarch64-unknown-linux-gnu]
+linker = "aarch64-linux-gnu-gcc"
+
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"
 serde_json = "1"
 chrono = "0.4"
-chrono-tz = { version = "0.6", features = ["serde"] }
+chrono-tz = { version = "0.8", features = ["serde"] }
 regex = "1.6"
 log = { version = "0.4", features = ["std", "serde"] }
-env_logger = "0.9"
-tokio = { version = "1.21", features = ["full"] }
+env_logger = "0.10"
+tokio = { version = "1", features = ["full"] }
 rand = "0.8"
 clap = { version = "4", features = ["derive"] }
 rayon = "1"
@@ -27,7 +30,11 @@ lazy_static = "1.4"
 reqwest = { verison = "0.11", features = ["json"] }
 futures = "0.3"
 
+# Database
+surrealdb = "1.0.0-beta.8"
+
 # Internal deps
+dfs-ml = { path = "dfs-ml"}
 resolver = { git = "https://github.com/floating-floaties/resolver.git" }
 inflection-rs = { git = "https://github.com/floating-floaties/inflection-rs.git" }
 eval-utility = { git = "https://github.com/floating-floaties/eval-utility.git" }

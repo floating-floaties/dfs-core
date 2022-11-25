@@ -1,13 +1,18 @@
 use std::sync::{Arc, Mutex};
 use lazy_static::lazy_static;
+use serde_json::json;
 
 
-#[derive(Eq, PartialEq, Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize)]
 pub struct GlobalConfig {
     version: String,
     pub(crate) audit_logger_format: String,
     pub(crate) service_logger_format: String,
     pub(crate) time_format: String,
+    pub(crate) message: String,
+    reload_events: Vec<String>,
+    github_secret: String,
+    concord_secret: String,
     error: bool,
 }
 
@@ -17,12 +22,13 @@ impl GlobalConfig {
         let app_name = env.config_details.app_name;
         let email = env.config_details.email;
         let client = reqwest::Client::new();
-        let payload = serde_json::json! {{
+
+        let payload = json!({
             "action": "GetConfig",
             "app": app_name,
-            "email": email,
-        }};
-        log::debug!("Fetching config: payload={:?}", payload);
+            "email": email
+        });
+        println!("Fetching config: query={:?}", payload);
         let response = client
             .post(env.config_details.url)
             .header("x-api-key", env.config_details.api_key)
@@ -30,39 +36,55 @@ impl GlobalConfig {
             .send()
             .await;
 
+        println!("{response:?}");
         let config = match response {
             Ok(res) => {
                 match res.json::<Self>().await {
                     Ok(config) => Some(config),
                     Err(parse_error) => {
-                        log::error!("Failed to parse config: {parse_error:?}");
+                        eprintln!("Failed to parse config: {parse_error:?}");
                         None
                     }
                 }
             }
             Err(response_error) => {
-                log::error!("Failed to get response from config server: {response_error:?}");
+                eprintln!("Failed to get response from config server: {response_error:?}");
                 None
             }
         };
 
         if let Some(config) = config {
-            log::info!("Got config from server!");
+            println!("Got config from server!");
             return config;
         }
 
         Self {
             version: "-1".into(),
-            audit_logger_format: "".to_string(),
-            service_logger_format: "[%(level)]: %(message)".to_string(),
-            time_format: "%d/%m/%Y %H:%M".to_string(),
+            audit_logger_format: "".into(),
+            service_logger_format: "[%(level)]: %(message)".into(),
+            time_format: "%d/%m/%Y %H:%M".into(),
+            reload_events: vec![],
+            github_secret: "invalid".into(),
+            concord_secret: "invalid".into(),
+            message: "[FAIL] How do you do?".into(),
             error: true,
         }
+    }
+
+    pub fn cmp_webhook_secret<S: AsRef<str>>(&self, other: S) -> bool {
+        let mut map = std::collections::HashSet::with_capacity(5);
+        map.insert(self.github_secret.clone());
+        map.insert(self.concord_secret.clone());
+        map.contains(other.as_ref())
+    }
+
+    pub fn is_expected_reload_event<S: AsRef<str>>(&self, ev: S) -> bool {
+        self.reload_events.contains(&ev.as_ref().to_string())
     }
 }
 
 
-#[derive(Eq, PartialEq, Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize)]
 pub struct Global {
     pub env: Environment,
     pub config: GlobalConfig,
@@ -78,6 +100,7 @@ impl Global {
 
     pub(crate) async fn update_mutex(&self, use_self: bool) -> Option<Self> {
         let g = Arc::clone(&GLOBAL_MUTEX);
+        // let handle = tokio::spawn(async {});
         let lock = g.lock();
 
         match lock {
@@ -92,15 +115,14 @@ impl Global {
                 new_config
             },
             Err(err) => {
-                println!("ERROR: Failed to acquire global resource lock '{:?}'", err);
+                eprintln!("ERROR: Failed to acquire global resource lock '{:?}'", err);
                 None
             }
         }
-
     }
 }
 
-#[derive(Eq, PartialEq, Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize)]
 pub struct ConfigDetails {
     pub url: String,
     pub api_key: String,
@@ -109,7 +131,7 @@ pub struct ConfigDetails {
     pub email: String,
 }
 
-#[derive(Eq, PartialEq, Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize)]
 pub struct Environment {
     pub host: String,
     pub port: u16,
@@ -192,8 +214,10 @@ impl Environment {
 /// use std::sync::Arc;
 /// use crate::config::*;
 ///
-/// if let Some(global) = global! () {
+/// if let Some(Some(g)) = global!() {
 ///     // use global config
+///     let config = g.config;
+///     let env = g.env;
 /// } else {
 ///     // failed to get global config
 /// }

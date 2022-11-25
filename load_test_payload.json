@@ -1,0 +1,13 @@
+{
+    "spec": {
+        "context": {
+            "example": "42"
+        },
+        "system": {
+            "tz": "US/Central"
+        },
+        "intents": [],
+        "dialogs": {}
+    },
+    "condition": "is_weekday(sys.tz)"
+}
