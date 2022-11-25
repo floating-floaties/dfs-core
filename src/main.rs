@@ -1,4 +1,4 @@
-// #![forbid(unsafe_code)]
+#![forbid(unsafe_code)]
 
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -6,7 +6,7 @@ use std::time::Instant;
 
 use actix::{Actor, Addr};
 use futures::future::{ok, err, Ready};
-use actix_web::{get, http, post, web, App, HttpResponse, HttpServer, Responder, HttpRequest, FromRequest, trace};
+use actix_web::{get, http, post, web, App, HttpResponse, HttpServer, Responder, HttpRequest, FromRequest};
 use actix_web::{dev::Service as _};
 use futures_util::future::FutureExt;
 use actix_cors::Cors;
@@ -20,9 +20,7 @@ use oauth2::http::HeaderValue;
 use reqwest::header::{HeaderName};
 use serde_json::Value;
 use uuid::Uuid;
-
-use rayon::prelude::*;
-use rust_bert::pipelines::question_answering::QaInput;
+use dfs_ml::bert::prelude::*;
 
 #[macro_use]
 mod config;
@@ -105,7 +103,7 @@ async fn test_qa(req_body: String) -> web::Json<Value> {
 
     match req {
         Ok(req) => {
-            let answers = ml::bert::ul::qa(&req);
+            let answers = dfs_ml::bert::ul::qa(&req);
             web::Json(serde_json::json! {{
                 "message": "Evaluated QAs".to_string(),
                 "result": Some(answers),
@@ -179,6 +177,20 @@ async fn version() -> impl Responder {
             std::fs::read_to_string("build-date.txt")
                 .unwrap_or_else(|_| "unknown".into())
         )
+}
+
+#[post("/version")]
+async fn version_post() -> impl Responder {
+    let build_date = std::fs::read_to_string("build-date.txt")
+        .unwrap_or_else(|_| "unknown".into());
+
+    let build_date = serde_json::json!({
+        "version": build_date,
+    });
+    let build_date = serde_json::to_string(&build_date);
+    HttpResponse::Ok()
+        .content_type("application/json")
+        .body(build_date.unwrap_or_default())
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -335,7 +347,7 @@ impl LogDetails {
 
     fn set_log_ids(&mut self) -> Self {
         if self.is_audit {
-            if let Ok(value) = serde_json::from_str::<Value>(&*self.message) {
+            if let Ok(value) = serde_json::from_str::<Value>(&self.message) {
                 if let Some(obj) = value.as_object() {
                     if let Some(id) = obj.get("spanId") {
                         if let Some(id) = id.as_str() {
@@ -386,10 +398,10 @@ impl LogDetails {
                         log::Level::Trace => { v.yellow().italic().to_string() }
                     };
 
-                    result = result.replace(*k, &*v);
+                    result = result.replace(*k, &v);
                 } else if key == "%(message)" {
                     let v = v.bright_blue().to_string();
-                    result = result.replace(*k, &*v);
+                    result = result.replace(*k, &v);
                 } else {
                     result = result.replace(*k, v);
                 }
@@ -543,8 +555,8 @@ async fn main() -> std::io::Result<()> {
             let (pid, tid, thread_name) = LogDetails::process_information();
             let message = LogDetails {
                 time_format: configuration.time_format.to_string(),
-                time: utc_time.format(&*configuration.time_format).to_string(),
-                local_time: local_time.format(&*configuration.time_format).to_string(),
+                time: utc_time.format(&configuration.time_format).to_string(),
+                local_time: local_time.format(&configuration.time_format).to_string(),
                 timestamp: utc_time.timestamp(),
                 target: target.to_string(),
                 app_name: env.config_details.app_name,
@@ -664,7 +676,7 @@ async fn main() -> std::io::Result<()> {
                 })
             })
 
-            .wrap(AuditLogger::new(&*conf.config.audit_logger_format).log_target("audit"))
+            .wrap(AuditLogger::new(&conf.config.audit_logger_format).log_target("audit"))
             .wrap(cors)
             .app_data(web::Data::from(app_state.clone()))
             .app_data(web::Data::new(server.clone()))
@@ -675,6 +687,7 @@ async fn main() -> std::io::Result<()> {
             .route("/qa", web::post().to(test_qa))
             .service(test_condition)
             .service(version)
+            .service(version_post)
     })
         .bind(config.env.host_port())?
         .workers(5)

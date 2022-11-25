@@ -1,5 +1,6 @@
 use std::sync::{Arc, Mutex};
 use lazy_static::lazy_static;
+use serde_json::json;
 
 
 #[derive(Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize)]
@@ -21,12 +22,13 @@ impl GlobalConfig {
         let app_name = env.config_details.app_name;
         let email = env.config_details.email;
         let client = reqwest::Client::new();
-        let payload = serde_json::json! {{
+
+        let payload = json!({
             "action": "GetConfig",
             "app": app_name,
-            "email": email,
-        }};
-        println!("Fetching config: payload={:?}", payload);
+            "email": email
+        });
+        println!("Fetching config: query={:?}", payload);
         let response = client
             .post(env.config_details.url)
             .header("x-api-key", env.config_details.api_key)
@@ -34,6 +36,7 @@ impl GlobalConfig {
             .send()
             .await;
 
+        println!("{response:?}");
         let config = match response {
             Ok(res) => {
                 match res.json::<Self>().await {
