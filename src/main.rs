@@ -673,7 +673,7 @@ async fn main() -> std::io::Result<()> {
         let cors = if environment.is_dev() {
             let protocols = ["https", "http", "ws", "wss"];
             let domains = ["0.0.0.0", "localhost", "127.0.0.1"];
-            let ports = ["3000", "8080", "8000", "80", "443"];
+            let ports = ["3001", "3000", "8080", "8000", "80", "443"];
             let mut cors = Cors::permissive();
 
             for protocol in protocols {
@@ -692,6 +692,10 @@ async fn main() -> std::io::Result<()> {
                 .allowed_origin("https://dev.floatingfloaties.com")
                 .allowed_origin("https://qa.floatingfloaties.com")
                 .allowed_origin("https://release.floatingfloaties.com")
+                .allowed_origin("https://dev.dustindiaz.io")
+                .allowed_origin("https://www.dustindiaz.io")
+                .allowed_origin("https://www.dudi.win")
+                .allowed_origin("https://dudi.win")
         };
 
         let cors = cors
