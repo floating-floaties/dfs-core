@@ -2,8 +2,26 @@ use std::sync::{Arc, Mutex};
 use lazy_static::lazy_static;
 use serde_json::json;
 
+#[derive(Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, Default)]
+pub struct GlobalCognitoConfig {
+    pub id: String,
+    pub secret: String,
+    pub auth_url: String,
+    pub token_url: String,
+}
 
-#[derive(Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize)]
+#[derive(PartialEq, Clone, serde::Deserialize, serde::Serialize, Default)]
+pub struct IslaSettings {
+    pub model: String,
+    pub temperature: f32,
+    pub max_tokens: u32,
+    pub top_p: f32,
+    pub frequency_penalty: f32,
+    pub presence_penalty: f32
+}
+
+
+#[derive(PartialEq, Clone, serde::Deserialize, serde::Serialize)]
 pub struct GlobalConfig {
     version: String,
     pub(crate) audit_logger_format: String,
@@ -14,6 +32,9 @@ pub struct GlobalConfig {
     github_secret: String,
     concord_secret: String,
     error: bool,
+    pub(crate) cognito: GlobalCognitoConfig,
+    pub(crate) openai_secret: String,
+    pub(crate) isla_settings: IslaSettings,
 }
 
 impl GlobalConfig {
@@ -68,6 +89,9 @@ impl GlobalConfig {
             concord_secret: "invalid".into(),
             message: "[FAIL] How do you do?".into(),
             error: true,
+            cognito: Default::default(),
+            openai_secret: "<secret>".into(),
+            isla_settings: Default::default(),
         }
     }
 
@@ -84,7 +108,7 @@ impl GlobalConfig {
 }
 
 
-#[derive(Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize)]
+#[derive(PartialEq, Clone, serde::Deserialize, serde::Serialize)]
 pub struct Global {
     pub env: Environment,
     pub config: GlobalConfig,
