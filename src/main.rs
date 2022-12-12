@@ -15,18 +15,25 @@ use actix_web::Error as ActixWebError;
 use actix_web::error::{ErrorNotFound};
 use actix_web::middleware::Logger as AuditLogger;
 use actix_web_actors::ws;
+use clap::builder::Str;
 use env_logger::{Builder};
 use oauth2::http::HeaderValue;
+use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
+use reqwest::{Error, Response};
 use reqwest::header::{HeaderName};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use surrealdb::Val;
 use uuid::Uuid;
-use dfs_ml::bert::prelude::*;
+// use dfs_ml::bert::prelude::*;
 
 #[macro_use]
 mod config;
 mod core;
 mod chat_app;
-mod ml;
+// mod ml;
+mod token;
+mod openai;
 
 use crate::{
     core::spec,
@@ -73,23 +80,23 @@ macro_rules! trace_id_from_req {
 }
 
 /// Entry point for our websocket route
-async fn chat_route(
-    req: HttpRequest,
-    stream: web::Payload,
-    srv: web::Data<Addr<server::ChatServer>>,
-) -> Result<HttpResponse, actix_web::Error> {
-    ws::start(
-        session::WsChatSession {
-            id: 0,
-            hb: Instant::now(),
-            room: "main".to_owned(),
-            name: None,
-            addr: srv.get_ref().clone(),
-        },
-        &req,
-        stream,
-    )
-}
+// async fn chat_route(
+//     req: HttpRequest,
+//     stream: web::Payload,
+//     srv: web::Data<Addr<server::ChatServer>>,
+// ) -> Result<HttpResponse, actix_web::Error> {
+//     ws::start(
+//         session::WsChatSession {
+//             id: 0,
+//             hb: Instant::now(),
+//             room: "main".to_owned(),
+//             name: None,
+//             addr: srv.get_ref().clone(),
+//         },
+//         &req,
+//         stream,
+//     )
+// }
 
 /// Displays state
 async fn get_count(count: web::Data<AtomicUsize>) -> impl Responder {
@@ -98,27 +105,85 @@ async fn get_count(count: web::Data<AtomicUsize>) -> impl Responder {
 }
 
 // #[post("/qa")]
-async fn test_qa(req_body: String) -> web::Json<Value> {
-    let req = serde_json::from_str::<Vec<QaInput>>(req_body.as_str());
+// async fn test_qa(req_body: String) -> web::Json<Value> {
+//     let req = serde_json::from_str::<Vec<QaInput>>(req_body.as_str());
+//
+//     match req {
+//         Ok(req) => {
+//             let answers = dfs_ml::bert::ul::qa(&req);
+//             web::Json(serde_json::json! {{
+//                 "message": "Evaluated QAs".to_string(),
+//                 "result": Some(answers),
+//                 "error": false,
+//             }})
+//         }
+//         Err(error) => {
+//             let message = format!("Failed to parse request: {:?}", error.to_string());
+//             web::Json(serde_json::json! {{
+//                 "message": message,
+//                 "result": null,
+//                 "error": true,
+//             }})
+//         }
+//     }
+// }
+#[derive(Serialize, Deserialize, Debug)]
+struct ChatbotRequest {
+    hist: Vec<String>,
+}
 
-    match req {
-        Ok(req) => {
-            let answers = dfs_ml::bert::ul::qa(&req);
-            web::Json(serde_json::json! {{
-                "message": "Evaluated QAs".to_string(),
-                "result": Some(answers),
-                "error": false,
-            }})
-        }
-        Err(error) => {
-            let message = format!("Failed to parse request: {:?}", error.to_string());
-            web::Json(serde_json::json! {{
-                "message": message,
-                "result": null,
-                "error": true,
-            }})
-        }
+#[derive(Serialize, Deserialize)]
+pub struct ChatbotResponse {
+    response: Option<openai::isla::ChatbotResponse>,
+    error: bool,
+    message: String,
+}
+
+
+#[post("/isla-response")]
+async fn chatbot(req_body: String) -> web::Json<ChatbotResponse> {
+    let req = serde_json::from_str::<ChatbotRequest>(req_body.as_str());
+
+    if req.is_err() {
+        return web::Json(ChatbotResponse {
+            error: true,
+            response: None,
+            message: format!("Failed to parse incoming request: {req:?}")
+        })
     }
+
+    if let Some(Some(config)) = global!() {
+        // checked if is error
+        let req = req.unwrap();
+        let res = openai::isla::get_response(
+            &config,
+            req.hist
+        ).await;
+
+        match res {
+            Ok(res) => {
+                web::Json(ChatbotResponse {
+                    error: false,
+                    response: Some(res),
+                    message: "".into()
+                })
+            },
+            Err(err) => {
+                web::Json(ChatbotResponse {
+                    error: true,
+                    response: None,
+                    message: format!("Failed to get response from bot: {err:?}")
+                })
+            }
+        }
+    } else {
+        web::Json(ChatbotResponse {
+            error: true,
+            response: None,
+            message: "Failed to get essential settings".into()
+        })
+    }
+
 }
 
 #[post("/condition")]
@@ -598,10 +663,9 @@ async fn main() -> std::io::Result<()> {
     let app_state = Arc::new(AtomicUsize::new(0));
     let server = server::ChatServer::new(app_state.clone()).start();
 
-    // let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
-    // builder.set_private_key_file("key.pem", SslFiletype::PEM).unwrap();
-    // builder.set_certificate_chain_file("cert.pem").unwrap();
-    // let config = aws_config::load_from_env().await;
+    let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
+    builder.set_private_key_file("key.pem", SslFiletype::PEM).unwrap();
+    builder.set_certificate_chain_file("cert.pem").unwrap();
 
     HttpServer::new(move || {
         let conf = global!().unwrap().unwrap();
@@ -682,14 +746,17 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(server.clone()))
             .service(home)
             .route("/count", web::get().to(get_count))
-            .route("/ws", web::get().to(chat_route))
+            // .route("/ws", web::get().to(chat_route))
             .route("/update", web::post().to(index))
-            .route("/qa", web::post().to(test_qa))
+            // .route("/qa", web::post().to(test_qa))
+            .service(chatbot)
             .service(test_condition)
             .service(version)
             .service(version_post)
+            .service(token::token)
     })
-        .bind(config.env.host_port())?
+        // .bind(config.env.host_port())?
+        .bind_openssl("0.0.0.0:443", builder)?
         .workers(5)
         .run()
         .await

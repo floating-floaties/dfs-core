@@ -41,6 +41,7 @@ eval-utility = { git = "https://github.com/floating-floaties/eval-utility.git" }
 string-utility = { git = "https://github.com/floating-floaties/string-utility.git" }
 
 # web deps
+openssl = { version = "0.10", features = ["vendored"] }
 actix = "0.13"
 sqlx = { version = "0.6", features = [ "runtime-actix-native-tls" , "postgres" ] }
 actix-web = { version = "4", features = ["openssl"] }
@@ -51,7 +52,6 @@ futures-util = "0.3"
 mini-redis = "0.4"
 jsonwebtokens-cognito = "0.1"
 oauth2 = "4.2"
-openssl = { version = "0.10", features = ["vendored"] }
 
 [dependencies.uuid]
 version = "1.2.1"
