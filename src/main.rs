@@ -670,35 +670,25 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         let conf = global!().unwrap().unwrap();
         let environment = conf.env.clone();
-        let cors = if environment.is_dev() {
-            let protocols = ["https", "http", "ws", "wss"];
-            let domains = ["0.0.0.0", "localhost", "127.0.0.1"];
-            let ports = ["3001", "3000", "8080", "8000", "80", "443"];
-            let mut cors = Cors::permissive();
+        // let cors = if environment.is_dev() {
+        //     Cors::default()
+        //         .allow_any_origin()
+        //         .send_wildcard()
+        // } else {
+        //     Cors::default()
+        //         .allowed_origin("https://floatingfloaties.com")
+        //         .allowed_origin("https://dev.floatingfloaties.com")
+        //         .allowed_origin("https://qa.floatingfloaties.com")
+        //         .allowed_origin("https://release.floatingfloaties.com")
+        //         .allowed_origin("https://dev.dustindiaz.io")
+        //         .allowed_origin("https://www.dustindiaz.io")
+        //         .allowed_origin("https://www.dudi.win")
+        //         .allowed_origin("https://dudi.win")
+        // };
 
-            for protocol in protocols {
-                for domain in domains {
-                    for port in ports {
-                        let origin = format!("{protocol}://{domain}:{port}");
-                        cors = cors.allowed_origin(origin.as_str());
-                    }
-                }
-            }
-
-            cors
-        } else {
-            Cors::default()
-                .allowed_origin("https://floatingfloaties.com")
-                .allowed_origin("https://dev.floatingfloaties.com")
-                .allowed_origin("https://qa.floatingfloaties.com")
-                .allowed_origin("https://release.floatingfloaties.com")
-                .allowed_origin("https://dev.dustindiaz.io")
-                .allowed_origin("https://www.dustindiaz.io")
-                .allowed_origin("https://www.dudi.win")
-                .allowed_origin("https://dudi.win")
-        };
-
-        let cors = cors
+        let cors = Cors::default()
+            .allow_any_origin()
+            .send_wildcard()
             .allowed_methods(vec!["GET", "POST"])
             .allowed_header(http::header::ACCEPT)
             .allowed_header(http::header::AUTHORIZATION)
