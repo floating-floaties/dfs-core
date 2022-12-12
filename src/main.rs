@@ -755,8 +755,8 @@ async fn main() -> std::io::Result<()> {
             .service(version_post)
             .service(token::token)
     })
-        // .bind(config.env.host_port())?
-        .bind_openssl("0.0.0.0:443", builder)?
+        .bind(config.env.host_port())?
+        // .bind_openssl("0.0.0.0:443", builder)?
         .workers(5)
         .run()
         .await
