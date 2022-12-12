@@ -689,16 +689,17 @@ async fn main() -> std::io::Result<()> {
         let cors = Cors::default()
             .allow_any_origin()
             .send_wildcard()
-            .allowed_methods(vec!["GET", "POST"])
-            .allowed_header(http::header::ACCEPT)
-            .allowed_header(http::header::AUTHORIZATION)
-            .allowed_header(http::header::CONTENT_LENGTH)
-            .allowed_header(http::header::HOST)
-            .allowed_header(http::header::CONTENT_TYPE)
-            .allowed_header(http::header::USER_AGENT)
-            .allowed_header(http::header::ACCEPT_ENCODING)
-            .allowed_header(http::header::CONNECTION)
-            .max_age(3600);
+            // .allowed_methods(vec!["GET", "POST"])
+            // .allowed_header(http::header::ACCEPT)
+            // .allowed_header(http::header::AUTHORIZATION)
+            // .allowed_header(http::header::CONTENT_LENGTH)
+            // .allowed_header(http::header::HOST)
+            // .allowed_header(http::header::CONTENT_TYPE)
+            // .allowed_header(http::header::USER_AGENT)
+            // .allowed_header(http::header::ACCEPT_ENCODING)
+            // .allowed_header(http::header::CONNECTION)
+            // .max_age(3600)
+            ;
 
 
         App::new()
