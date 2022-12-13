@@ -22,14 +22,14 @@ export LD_LIBRARY_PATH="$LIBTORCH/lib:$LD_LIBRARY_PATH"
 
 # Start server on screen
 screen -dmS dfs-core
-screen -S dfs-core -X stuff "export LIBTORCH=\"$LIBTORCH \
+screen -S dfs-core -X stuff "export LIBTORCH=\"$LIBTORCH\" \
                              && export LD_LIBRARY_PATH=\"$LD_LIBRARY_PATH\" \
                              && export CONFIG_CONCORD_URL=\"$CONFIG_CONCORD_URL\" \
                              && export CONFIG_CONCORD_API_KEY=\"$CONFIG_CONCORD_API_KEY\" \
                              && export CONFIG_CONCORD_APP_NAME=\"$CONFIG_CONCORD_APP_NAME\" \
                              && export CONFIG_CONCORD_EMAIL=\"$CONFIG_CONCORD_EMAIL\" \
                              && export HOST=\"0.0.0.0\" \
-                             && export PORT=\"8080\" \
+                             && export PORT=\"80\" \
                              && export ENV=\"production\" \
                              && export SAVE_LOGS=\"true\" \
                              && ./bin/x86_64-unknown-linux-gnu/dfs\n"
