@@ -32,4 +32,6 @@ source "$HOME/.cargo/env"
 rustup default nightly
 rustup update
 
+iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8080
+
 /bin/bash start.sh

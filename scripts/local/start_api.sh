@@ -1,10 +1,11 @@
 #!/bin/sh
 
-export HOST=127.0.0.1
-export PORT=3000
+export HOST=0.0.0.0
+export PORT=80
 export ENV=dev
 export SAVE_LOGS=false
 
-kill -9 "$(lsof -t -i tcp:"$PORT")"
+for i in $(lsof -t -i tcp:"$PORT"); do kill -9 "$i"; done
+for i in $(lsof -t -i tcp:"$PORT"); do kill -9 "$i"; done
 
-cargo watch -x 'run --release --bin dfs'
+authbind --deep cargo watch -x 'run --release --bin dfs'

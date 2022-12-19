@@ -6,7 +6,7 @@ use std::time::Instant;
 
 use actix::{Actor, Addr};
 use futures::future::{ok, err, Ready};
-use actix_web::{get, http, post, web, App, HttpResponse, HttpServer, Responder, HttpRequest, FromRequest};
+use actix_web::{get, options, http, post, web, App, HttpResponse, HttpServer, Responder, HttpRequest, FromRequest};
 use actix_web::{dev::Service as _};
 use futures_util::future::FutureExt;
 use actix_cors::Cors;
@@ -15,18 +15,24 @@ use actix_web::Error as ActixWebError;
 use actix_web::error::{ErrorNotFound};
 use actix_web::middleware::Logger as AuditLogger;
 use actix_web_actors::ws;
+use clap::builder::Str;
 use env_logger::{Builder};
 use oauth2::http::HeaderValue;
+use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
+use reqwest::{Error, Response};
 use reqwest::header::{HeaderName};
-use serde_json::Value;
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
+use surrealdb::Val;
 use uuid::Uuid;
-use dfs_ml::bert::prelude::*;
 
 #[macro_use]
 mod config;
 mod core;
 mod chat_app;
 mod ml;
+mod token;
+mod openai;
 
 use crate::{
     core::spec,
@@ -73,23 +79,23 @@ macro_rules! trace_id_from_req {
 }
 
 /// Entry point for our websocket route
-async fn chat_route(
-    req: HttpRequest,
-    stream: web::Payload,
-    srv: web::Data<Addr<server::ChatServer>>,
-) -> Result<HttpResponse, actix_web::Error> {
-    ws::start(
-        session::WsChatSession {
-            id: 0,
-            hb: Instant::now(),
-            room: "main".to_owned(),
-            name: None,
-            addr: srv.get_ref().clone(),
-        },
-        &req,
-        stream,
-    )
-}
+// async fn chat_route(
+//     req: HttpRequest,
+//     stream: web::Payload,
+//     srv: web::Data<Addr<server::ChatServer>>,
+// ) -> Result<HttpResponse, actix_web::Error> {
+//     ws::start(
+//         session::WsChatSession {
+//             id: 0,
+//             hb: Instant::now(),
+//             room: "main".to_owned(),
+//             name: None,
+//             addr: srv.get_ref().clone(),
+//         },
+//         &req,
+//         stream,
+//     )
+// }
 
 /// Displays state
 async fn get_count(count: web::Data<AtomicUsize>) -> impl Responder {
@@ -98,26 +104,125 @@ async fn get_count(count: web::Data<AtomicUsize>) -> impl Responder {
 }
 
 // #[post("/qa")]
-async fn test_qa(req_body: String) -> web::Json<Value> {
-    let req = serde_json::from_str::<Vec<QaInput>>(req_body.as_str());
+// async fn test_qa(req_body: String) -> web::Json<Value> {
+//     let req = serde_json::from_str::<Vec<QaInput>>(req_body.as_str());
+//
+//     match req {
+//         Ok(req) => {
+//             let answers = dfs_ml::bert::ul::qa(&req);
+//             web::Json(serde_json::json! {{
+//                 "message": "Evaluated QAs".to_string(),
+//                 "result": Some(answers),
+//                 "error": false,
+//             }})
+//         }
+//         Err(error) => {
+//             let message = format!("Failed to parse request: {:?}", error.to_string());
+//             web::Json(serde_json::json! {{
+//                 "message": message,
+//                 "result": null,
+//                 "error": true,
+//             }})
+//         }
+//     }
+// }
+#[derive(Serialize, Deserialize, Debug)]
+struct ChatbotRequest {
+    hist: Vec<String>,
+}
 
-    match req {
-        Ok(req) => {
-            let answers = dfs_ml::bert::ul::qa(&req);
-            web::Json(serde_json::json! {{
-                "message": "Evaluated QAs".to_string(),
-                "result": Some(answers),
-                "error": false,
-            }})
+#[derive(Serialize, Deserialize, Debug)]
+struct DustinDiazIoRequest {
+    host: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ChatbotResponse {
+    response: Option<openai::isla::ChatbotResponse>,
+    error: bool,
+    message: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct DustinDiazIoResponse {
+    response: Option<config::DustinDiazIoConfig>,
+    error: bool,
+    message: String,
+}
+
+// #[options("/isla-response")]
+// async fn example() -> HttpResponse {
+//     HttpResponse::Ok().finish()
+// }
+//
+// #[options("/")]
+// async fn example() -> HttpResponse {
+//     HttpResponse::Ok().finish()
+// }
+
+#[post("/isla-response")]
+async fn chatbot(req_body: String) -> web::Json<ChatbotResponse> {
+    let req = serde_json::from_str::<ChatbotRequest>(req_body.as_str());
+
+    if req.is_err() {
+        return web::Json(ChatbotResponse {
+            error: true,
+            response: None,
+            message: format!("Failed to parse incoming request: {req:?}")
+        })
+    }
+
+    if let Some(Some(config)) = global!() {
+        // checked if is error
+        let req = req.unwrap();
+        let res = openai::isla::get_response(
+            &config,
+            req.hist
+        ).await;
+
+        match res {
+            Ok(res) => {
+                web::Json(ChatbotResponse {
+                    error: false,
+                    response: Some(res),
+                    message: "".into()
+                })
+            },
+            Err(err) => {
+                web::Json(ChatbotResponse {
+                    error: true,
+                    response: None,
+                    message: format!("Failed to get response from bot: {err:?}")
+                })
+            }
         }
-        Err(error) => {
-            let message = format!("Failed to parse request: {:?}", error.to_string());
-            web::Json(serde_json::json! {{
-                "message": message,
-                "result": null,
-                "error": true,
-            }})
-        }
+    } else {
+        web::Json(ChatbotResponse {
+            error: true,
+            response: None,
+            message: "Failed to get essential settings".into()
+        })
+    }
+
+}
+
+#[post("/dustindiaz_io")]
+async fn dustindiaz_io_config() -> web::Json<DustinDiazIoResponse> {
+    if let Some(Some(config)) = global!() {
+        // checked if is error
+        let res = config.config.dustindiaz_io;
+
+        web::Json(DustinDiazIoResponse {
+            error: false,
+            response: Some(res),
+            message: "".into()
+        })
+    } else {
+        web::Json(DustinDiazIoResponse {
+            error: true,
+            response: None,
+            message: "Failed to get essential settings".into()
+        })
     }
 }
 
@@ -163,7 +268,7 @@ async fn test_condition(req_body: String) -> web::Json<spec::web::ConditionRespo
 #[get("/")]
 async fn home() -> impl Responder {
     let msg = if let Some(Some(g)) = global!() {
-        g.config.message
+        g.config.motd
     } else {
         "How do you do?".to_string()
     };
@@ -598,57 +703,72 @@ async fn main() -> std::io::Result<()> {
     let app_state = Arc::new(AtomicUsize::new(0));
     let server = server::ChatServer::new(app_state.clone()).start();
 
-    // let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
-    // builder.set_private_key_file("key.pem", SslFiletype::PEM).unwrap();
-    // builder.set_certificate_chain_file("cert.pem").unwrap();
-    // let config = aws_config::load_from_env().await;
+    let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
+    builder.set_private_key_file("key.pem", SslFiletype::PEM).unwrap();
+    builder.set_certificate_chain_file("cert.pem").unwrap();
 
     HttpServer::new(move || {
         let conf = global!().unwrap().unwrap();
         let environment = conf.env.clone();
-        let cors = if environment.is_dev() {
-            let protocols = ["https", "http", "ws", "wss"];
-            let domains = ["0.0.0.0", "localhost", "127.0.0.1"];
-            let ports = ["3000", "8080", "8000", "80", "443"];
-            let mut cors = Cors::permissive();
+        // let cors = if environment.is_dev() {
+        //     Cors::default()
+        //         .allow_any_origin()
+        //         .send_wildcard()
+        // } else {
+        //     Cors::default()
+        //         .allowed_origin("https://floatingfloaties.com")
+        //         .allowed_origin("https://dev.floatingfloaties.com")
+        //         .allowed_origin("https://qa.floatingfloaties.com")
+        //         .allowed_origin("https://release.floatingfloaties.com")
+        //         .allowed_origin("https://dev.dustindiaz.io")
+        //         .allowed_origin("https://www.dustindiaz.io")
+        //         .allowed_origin("https://www.dudi.win")
+        //         .allowed_origin("https://dudi.win")
+        // };
 
-            for protocol in protocols {
-                for domain in domains {
-                    for port in ports {
-                        let origin = format!("{protocol}://{domain}:{port}");
-                        cors = cors.allowed_origin(origin.as_str());
-                    }
-                }
-            }
+        // let cors = Cors::default()
+        //     // .supports_credentials()
+        //     .allow_any_header()
+        //     .allow_any_origin()
+        //     .send_wildcard()
+        //     .block_on_origin_mismatch(false);
 
-            cors
-        } else {
-            Cors::default()
-                .allowed_origin("https://floatingfloaties.com")
-                .allowed_origin("https://dev.floatingfloaties.com")
-                .allowed_origin("https://qa.floatingfloaties.com")
-                .allowed_origin("https://release.floatingfloaties.com")
-        };
-
-        let cors = cors
-            .allowed_methods(vec!["GET", "POST"])
-            .allowed_header(http::header::ACCEPT)
-            .allowed_header(http::header::AUTHORIZATION)
-            .allowed_header(http::header::CONTENT_LENGTH)
-            .allowed_header(http::header::HOST)
-            .allowed_header(http::header::CONTENT_TYPE)
-            .allowed_header(http::header::USER_AGENT)
-            .allowed_header(http::header::ACCEPT_ENCODING)
-            .allowed_header(http::header::CONNECTION)
-            .max_age(3600);
+            // let cors = Cors::default()
+        //     .allow_any_origin()
+        //     .send_wildcard()
+            // .allowed_methods(vec!["GET", "POST"])
+            // .allowed_header(http::header::ACCEPT)
+            // .allowed_header(http::header::AUTHORIZATION)
+            // .allowed_header(http::header::CONTENT_LENGTH)
+            // .allowed_header(http::header::HOST)
+            // .allowed_header(http::header::CONTENT_TYPE)
+            // .allowed_header(http::header::USER_AGENT)
+            // .allowed_header(http::header::ACCEPT_ENCODING)
+            // .allowed_header(http::header::CONNECTION)
+            // .max_age(3600)
+            ;
 
 
         App::new()
+            .wrap(Cors::permissive())
             .wrap_fn(|req, srv| {
                 let req_head = req.headers().clone();
                 srv.call(req).map(move |res| {
                     if let Ok(mut response) = res {
                         let headers = response.headers_mut();
+                        // headers.insert(
+                        //     "Access-Control-Allow-Origin".parse().unwrap(),
+                        //     "*".parse().unwrap()
+                        // );
+                        // headers.insert(
+                        //     "Access-Control-Allow-Methods".parse().unwrap(),
+                        //     "POST, OPTIONS, GET, PATCH".parse().unwrap()
+                        // );
+                        // headers.insert(
+                        //     "Access-Control-Max-Age".parse().unwrap(),
+                        //     "2592000".parse().unwrap()
+                        // );
+
                         for static_value in [TRACE_ID, SPAN_ID] {
                             let id = match req_head.get(static_value) {
                                 None => {
@@ -677,19 +797,23 @@ async fn main() -> std::io::Result<()> {
             })
 
             .wrap(AuditLogger::new(&conf.config.audit_logger_format).log_target("audit"))
-            .wrap(cors)
-            .app_data(web::Data::from(app_state.clone()))
-            .app_data(web::Data::new(server.clone()))
+            // .app_data(web::Data::from(app_state.clone()))
+            // .app_data(web::Data::new(server.clone()))
+            // .service(example)
             .service(home)
             .route("/count", web::get().to(get_count))
-            .route("/ws", web::get().to(chat_route))
+            // .route("/ws", web::get().to(chat_route))
             .route("/update", web::post().to(index))
-            .route("/qa", web::post().to(test_qa))
+            // .route("/qa", web::post().to(test_qa))
+            .service(chatbot)
             .service(test_condition)
             .service(version)
             .service(version_post)
+            .service(dustindiaz_io_config)
+            .service(token::token)
     })
         .bind(config.env.host_port())?
+        // .bind_openssl("0.0.0.0:443", builder)?
         .workers(5)
         .run()
         .await
