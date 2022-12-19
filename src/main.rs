@@ -6,7 +6,7 @@ use std::time::Instant;
 
 use actix::{Actor, Addr};
 use futures::future::{ok, err, Ready};
-use actix_web::{get, http, post, web, App, HttpResponse, HttpServer, Responder, HttpRequest, FromRequest};
+use actix_web::{get, options, http, post, web, App, HttpResponse, HttpServer, Responder, HttpRequest, FromRequest};
 use actix_web::{dev::Service as _};
 use futures_util::future::FutureExt;
 use actix_cors::Cors;
@@ -22,16 +22,15 @@ use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
 use reqwest::{Error, Response};
 use reqwest::header::{HeaderName};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 use surrealdb::Val;
 use uuid::Uuid;
-// use dfs_ml::bert::prelude::*;
 
 #[macro_use]
 mod config;
 mod core;
 mod chat_app;
-// mod ml;
+mod ml;
 mod token;
 mod openai;
 
@@ -132,6 +131,11 @@ struct ChatbotRequest {
     hist: Vec<String>,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+struct DustinDiazIoRequest {
+    host: String,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct ChatbotResponse {
     response: Option<openai::isla::ChatbotResponse>,
@@ -139,6 +143,22 @@ pub struct ChatbotResponse {
     message: String,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct DustinDiazIoResponse {
+    response: Option<config::DustinDiazIoConfig>,
+    error: bool,
+    message: String,
+}
+
+// #[options("/isla-response")]
+// async fn example() -> HttpResponse {
+//     HttpResponse::Ok().finish()
+// }
+//
+// #[options("/")]
+// async fn example() -> HttpResponse {
+//     HttpResponse::Ok().finish()
+// }
 
 #[post("/isla-response")]
 async fn chatbot(req_body: String) -> web::Json<ChatbotResponse> {
@@ -186,6 +206,26 @@ async fn chatbot(req_body: String) -> web::Json<ChatbotResponse> {
 
 }
 
+#[post("/dustindiaz_io")]
+async fn dustindiaz_io_config() -> web::Json<DustinDiazIoResponse> {
+    if let Some(Some(config)) = global!() {
+        // checked if is error
+        let res = config.config.dustindiaz_io;
+
+        web::Json(DustinDiazIoResponse {
+            error: false,
+            response: Some(res),
+            message: "".into()
+        })
+    } else {
+        web::Json(DustinDiazIoResponse {
+            error: true,
+            response: None,
+            message: "Failed to get essential settings".into()
+        })
+    }
+}
+
 #[post("/condition")]
 async fn test_condition(req_body: String) -> web::Json<spec::web::ConditionResponse> {
     // if let Some(_global) = global!() {
@@ -228,7 +268,7 @@ async fn test_condition(req_body: String) -> web::Json<spec::web::ConditionRespo
 #[get("/")]
 async fn home() -> impl Responder {
     let msg = if let Some(Some(g)) = global!() {
-        g.config.message
+        g.config.motd
     } else {
         "How do you do?".to_string()
     };
@@ -686,9 +726,16 @@ async fn main() -> std::io::Result<()> {
         //         .allowed_origin("https://dudi.win")
         // };
 
-        let cors = Cors::default()
-            .allow_any_origin()
-            .send_wildcard()
+        // let cors = Cors::default()
+        //     // .supports_credentials()
+        //     .allow_any_header()
+        //     .allow_any_origin()
+        //     .send_wildcard()
+        //     .block_on_origin_mismatch(false);
+
+            // let cors = Cors::default()
+        //     .allow_any_origin()
+        //     .send_wildcard()
             // .allowed_methods(vec!["GET", "POST"])
             // .allowed_header(http::header::ACCEPT)
             // .allowed_header(http::header::AUTHORIZATION)
@@ -703,11 +750,25 @@ async fn main() -> std::io::Result<()> {
 
 
         App::new()
+            .wrap(Cors::permissive())
             .wrap_fn(|req, srv| {
                 let req_head = req.headers().clone();
                 srv.call(req).map(move |res| {
                     if let Ok(mut response) = res {
                         let headers = response.headers_mut();
+                        // headers.insert(
+                        //     "Access-Control-Allow-Origin".parse().unwrap(),
+                        //     "*".parse().unwrap()
+                        // );
+                        // headers.insert(
+                        //     "Access-Control-Allow-Methods".parse().unwrap(),
+                        //     "POST, OPTIONS, GET, PATCH".parse().unwrap()
+                        // );
+                        // headers.insert(
+                        //     "Access-Control-Max-Age".parse().unwrap(),
+                        //     "2592000".parse().unwrap()
+                        // );
+
                         for static_value in [TRACE_ID, SPAN_ID] {
                             let id = match req_head.get(static_value) {
                                 None => {
@@ -736,9 +797,9 @@ async fn main() -> std::io::Result<()> {
             })
 
             .wrap(AuditLogger::new(&conf.config.audit_logger_format).log_target("audit"))
-            .wrap(cors)
-            .app_data(web::Data::from(app_state.clone()))
-            .app_data(web::Data::new(server.clone()))
+            // .app_data(web::Data::from(app_state.clone()))
+            // .app_data(web::Data::new(server.clone()))
+            // .service(example)
             .service(home)
             .route("/count", web::get().to(get_count))
             // .route("/ws", web::get().to(chat_route))
@@ -748,6 +809,7 @@ async fn main() -> std::io::Result<()> {
             .service(test_condition)
             .service(version)
             .service(version_post)
+            .service(dustindiaz_io_config)
             .service(token::token)
     })
         .bind(config.env.host_port())?

@@ -1,8 +1,9 @@
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use lazy_static::lazy_static;
 use serde_json::json;
 
-#[derive(Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, Default)]
+#[derive(Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, Default, Hash)]
 pub struct GlobalCognitoConfig {
     pub id: String,
     pub secret: String,
@@ -20,6 +21,12 @@ pub struct IslaSettings {
     pub presence_penalty: f32
 }
 
+#[derive(PartialEq, Eq, Clone, serde::Deserialize, serde::Serialize, Default)]
+pub struct DustinDiazIoConfig {
+    #[serde(alias="apiUrl")]
+    pub api_url: HashMap<String, String>,
+}
+
 
 #[derive(PartialEq, Clone, serde::Deserialize, serde::Serialize)]
 pub struct GlobalConfig {
@@ -27,7 +34,10 @@ pub struct GlobalConfig {
     pub(crate) audit_logger_format: String,
     pub(crate) service_logger_format: String,
     pub(crate) time_format: String,
-    pub(crate) message: String,
+    pub(crate) motd: String,
+
+    #[serde(alias="dustindiaz.io")]
+    pub(crate) dustindiaz_io: DustinDiazIoConfig,
     reload_events: Vec<String>,
     github_secret: String,
     concord_secret: String,
@@ -87,11 +97,12 @@ impl GlobalConfig {
             reload_events: vec![],
             github_secret: "invalid".into(),
             concord_secret: "invalid".into(),
-            message: "[FAIL] How do you do?".into(),
+            motd: "[FAIL] How do you do?".into(),
             error: true,
             cognito: Default::default(),
             openai_secret: "<secret>".into(),
             isla_settings: Default::default(),
+            dustindiaz_io: Default::default(),
         }
     }
 
@@ -146,7 +157,7 @@ impl Global {
     }
 }
 
-#[derive(Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize)]
+#[derive(Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, Hash)]
 pub struct ConfigDetails {
     pub url: String,
     pub api_key: String,
@@ -155,7 +166,7 @@ pub struct ConfigDetails {
     pub email: String,
 }
 
-#[derive(Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize)]
+#[derive(Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, Hash)]
 pub struct Environment {
     pub host: String,
     pub port: u16,
