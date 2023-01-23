@@ -4226,9 +4226,9 @@ dependencies = [
 
 [[package]]
 name = "serde_yaml"
-version = "0.9.15"
+version = "0.9.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62f33c5a526b140e830219698a1bafd340d3206cfa37371ed00442babaf53105"
+checksum = "8fb06d4b6cdaef0e0c51fa881acb721bed3c924cfaa71d9c94a3b771dfdf6567"
 dependencies = [
  "indexmap",
  "itoa 1.0.5",
